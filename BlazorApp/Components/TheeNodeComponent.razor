@@ -1,0 +1,76 @@
+﻿@using Microsoft.AspNetCore.Components.Web
+@using Web_Api.Model;
+
+<li style="padding-left: 20px;">
+    <div style="display: inline-flex; align-items: center;"
+         draggable="true"
+         @ondragstart="(e) => OnDragStart(e, Node)"
+         @ondrop="(e) => OnDrop(e, Node)"
+         @ondragover:preventDefault
+         @oncontextmenu:preventDefault
+         @oncontextmenu="(e) => OnRightClick(e, Node)">
+
+        @if (Node.HasChildren)
+        {
+            <button class="btn btn-sm btn-link p-0 me-2" style="font-size:0.9rem;" @onclick="ToggleExpand">
+                @(isExpanded ? "▼" : "▶")
+            </button>
+        }
+
+        <span>@Node.Name (@Node.NodeType)</span>
+    </div>
+
+    @if (isExpanded && Node.Children != null && Node.Children.Any())
+    {
+        <ul class="list-unstyled">
+            @foreach (var child in Node.Children)
+            {
+                <TreeNodeComponent Node="child" OnNodeDrop="OnNodeDrop" OnContextMenu="OnContextMenu" OnExpand="OnExpand" />
+            }
+        </ul>
+    }
+</li>
+
+@code {
+    [Parameter] public TreeNodeDto Node { get; set; }
+    [Parameter] public EventCallback<(TreeNodeDto Dragged, TreeNodeDto Target)> OnNodeDrop { get; set; }
+    [Parameter] public EventCallback<(TreeNodeDto Node, MouseEventArgs e)> OnContextMenu { get; set; }
+    [Parameter] public EventCallback<TreeNodeDto> OnExpand { get; set; }
+
+    private TreeNodeDto draggedNode;
+    private bool isExpanded;
+
+    private void OnDragStart(DragEventArgs e, TreeNodeDto node)
+    {
+        draggedNode = node;
+    }
+
+    private async Task OnDrop(DragEventArgs e, TreeNodeDto targetNode)
+    {
+        if (draggedNode != null)
+        {
+            await OnNodeDrop.InvokeAsync((draggedNode, targetNode));
+        }
+    }
+
+    private async Task OnRightClick(MouseEventArgs e, TreeNodeDto node)
+    {
+        await OnContextMenu.InvokeAsync((node, e));
+    }
+
+    private async Task ToggleExpand()
+    {
+        if (!isExpanded)
+        {
+            if (OnExpand.HasDelegate && Node.HasChildren && (Node.Children == null || Node.Children.Count == 0))
+            {
+                await OnExpand.InvokeAsync(Node);
+            }
+            isExpanded = true;
+        }
+        else
+        {
+            isExpanded = false;
+        }
+    }
+}

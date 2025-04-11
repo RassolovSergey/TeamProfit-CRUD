@@ -1,0 +1,59 @@
+﻿@page "/register"
+@inject IHttpClientFactory HttpClientFactory
+@using System.Net.Http.Json
+
+<h3>Регистрация</h3>
+
+<EditForm Model="registerModel" OnValidSubmit="HandleRegister">
+    <DataAnnotationsValidator />
+    <ValidationSummary />
+
+    <div class="mb-3">
+        <label>Login:</label>
+        <InputText @bind-Value="registerModel.Login" class="form-control" />
+    </div>
+
+    <div class="mb-3">
+        <label>Email:</label>
+        <InputText @bind-Value="registerModel.Email" class="form-control" />
+    </div>
+
+    <div class="mb-3">
+        <label>Password:</label>
+        <InputText @bind-Value="registerModel.Password" type="password" class="form-control" />
+    </div>
+
+    <button type="submit" class="btn btn-primary">Зарегистрироваться</button>
+</EditForm>
+
+@if (!string.IsNullOrEmpty(message))
+{
+    <div class="alert alert-info mt-3">@message</div>
+}
+
+@code {
+    private RegisterModel registerModel = new RegisterModel();
+    private string message;
+
+    private async Task HandleRegister()
+    {
+        var httpClient = HttpClientFactory.CreateClient("ApiClient");
+        var response = await httpClient.PostAsJsonAsync("auth/register", registerModel);
+
+        if (response.IsSuccessStatusCode)
+        {
+            message = "Регистрация прошла успешно!";
+        }
+        else
+        {
+            message = await response.Content.ReadAsStringAsync();
+        }
+    }
+
+    public class RegisterModel
+    {
+        public string Login { get; set; }
+        public string Email { get; set; }
+        public string Password { get; set; }
+    }
+}

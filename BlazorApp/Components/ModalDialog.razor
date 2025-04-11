@@ -1,0 +1,167 @@
+﻿@using Microsoft.AspNetCore.Components
+@using Microsoft.AspNetCore.Components.Forms
+
+<div class="modal @(show ? "show d-block" : "fade")" tabindex="-1" style="background-color: rgba(0,0,0,0.5);">
+    <div class="modal-dialog">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title">@Title</h5>
+                <button type="button" class="btn-close" @onclick="Close"></button>
+            </div>
+            <div class="modal-body">
+                <EditForm Model="formModel" OnValidSubmit="HandleValidSubmit">
+                    <DataAnnotationsValidator />
+                    <ValidationSummary />
+
+                    @if (formModel.NodeType == "User")
+                    {
+                        <div class="mb-3">
+                            <label class="form-label">Username:</label>
+                            <InputText @bind-Value="formModel.Username" class="form-control" />
+                        </div>
+                        <div class="mb-3">
+                            <label class="form-label">Email:</label>
+                            <InputText @bind-Value="formModel.Email" class="form-control" />
+                        </div>
+                        <div class="mb-3">
+                            <label class="form-label">Password:</label>
+                            <InputText @bind-Value="formModel.Password" type="password" class="form-control" />
+                        </div>
+                    }
+                    else if (formModel.NodeType == "Outfit")
+                    {
+                        <div class="mb-3">
+                            <label class="form-label">Title:</label>
+                            <InputText @bind-Value="formModel.Title" class="form-control" />
+                        </div>
+                        <div class="mb-3">
+                            <label class="form-label">Description:</label>
+                            <InputText @bind-Value="formModel.Description" class="form-control" />
+                        </div>
+                        <div class="mb-3">
+                            <label class="form-label">ImageUrl:</label>
+                            <InputText @bind-Value="formModel.ImageUrl" class="form-control" />
+                        </div>
+                    }
+                    else if (formModel.NodeType == "Comment")
+                    {
+                        <div class="mb-3">
+                            <label class="form-label">Text:</label>
+                            <InputTextArea @bind-Value="formModel.Text" class="form-control" />
+                        </div>
+                    }
+
+                    <div class="d-flex justify-content-end">
+                        <button type="submit" class="btn btn-primary">@SubmitButtonText</button>
+                    </div>
+                </EditForm>
+            </div>
+        </div>
+    </div>
+</div>
+
+@code {
+    private bool show;
+    public string Title { get; set; }
+    public string SubmitButtonText { get; set; }
+
+    [Parameter] public EventCallback<ModalResult> OnSave { get; set; }
+
+    public ModalFormModel formModel = new ModalFormModel();
+
+    public void ShowEdit(TreeNodeDto node)
+    {
+        show = true;
+        Title = $"Редактировать {node.NodeType}";
+        SubmitButtonText = "Сохранить";
+
+        formModel.Id = node.Id;
+        formModel.NodeType = node.NodeType;
+        formModel.IsCreate = false;
+
+        formModel.Name = node.Name;
+
+        if (node.NodeType == "User")
+        {
+            formModel.Username = node.Name;
+        }
+        else if (node.NodeType == "Outfit")
+        {
+            formModel.Title = node.Name;
+        }
+        else if (node.NodeType == "Comment")
+        {
+            formModel.Text = node.Name;
+        }
+    }
+
+    public void ShowCreate(string newType, int parentId)
+    {
+        show = true;
+        Title = $"Создать {newType}";
+        SubmitButtonText = "Создать";
+
+        formModel = new ModalFormModel
+            {
+                NodeType = newType,
+                ParentId = parentId,
+                ParentType = (newType == "Outfit") ? "User" : "Outfit",
+                IsCreate = true
+            };
+    }
+
+    private async Task HandleValidSubmit()
+    {
+        if (formModel.IsCreate)
+        {
+            await CreateObject();
+        }
+        else
+        {
+            await UpdateObject();
+        }
+    }
+
+    private async Task CreateObject()
+    {
+        // Ваш код для создания объектов
+    }
+
+    private async Task UpdateObject()
+    {
+        // Ваш код для обновления объектов
+    }
+
+    public void Close()
+    {
+        show = false;
+    }
+
+    public class ModalFormModel
+    {
+        public int Id { get; set; }
+        public string NodeType { get; set; }
+        public bool IsCreate { get; set; }
+
+        public string Username { get; set; }
+        public string Email { get; set; }
+        public string Password { get; set; }
+
+        public string Title { get; set; }
+        public string Description { get; set; }
+        public string ImageUrl { get; set; }
+
+        public string Text { get; set; }
+
+        public int ParentId { get; set; }
+        public string ParentType { get; set; }
+
+        public string Name { get; set; }
+    }
+
+    public class ModalResult
+    {
+        public TreeNodeDto CreatedNode { get; set; }
+        public TreeNodeDto UpdatedNode { get; set; }
+    }
+}

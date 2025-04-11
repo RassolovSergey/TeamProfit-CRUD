@@ -1,0 +1,71 @@
+﻿@page "/login"
+@inject HttpClient Http
+@inject IHttpClientFactory HttpClientFactory
+@using System.Net.Http.Json
+
+<h3>Вход</h3>
+
+<EditForm Model="loginModel" OnValidSubmit="HandleLogin">
+    <!-- Элемент EditForm используется для привязки формы к модели данных (loginModel) и обработки события отправки формы, если она является валидной. -->
+    <DataAnnotationsValidator />  <!-- Компонент для валидации формы с использованием аннотаций данных (например, Required, EmailAddress и т. д.). -->
+    <ValidationSummary />  <!-- Компонент для отображения всех ошибок валидации формы. -->
+
+    <!-- Поле для ввода электронной почты -->
+    <div class="mb-3">
+        <label>Email:</label>  <!-- Тег <label> для поля ввода email. -->
+        <InputText @bind-Value="loginModel.Email" class="form-control" />  
+        <!-- Поле ввода текста с привязкой значения к свойству "Email" модели loginModel. -->
+    </div>
+
+    <!-- Поле для ввода пароля -->
+    <div class="mb-3">
+        <label>Password:</label>  <!-- Тег <label> для поля ввода пароля. -->
+        <InputText @bind-Value="loginModel.Password" type="password" class="form-control" />  
+        <!-- Поле ввода текста с типом "password", чтобы скрыть введенные символы, с привязкой к свойству "Password". -->
+    </div>
+
+    <button type="submit" class="btn btn-primary">Войти</button>  
+    <!-- Кнопка для отправки формы, которая вызовет обработчик OnValidSubmit (HandleLogin), если форма валидна. -->
+</EditForm>
+<!-- Условие для отображения сообщения, если оно не пустое. -->
+@if (!string.IsNullOrEmpty(message))
+{
+    <!-- Вывод сообщения в блоке alert, если оно установлено в коде. -->
+    <div class="alert alert-info mt-3">@message</div>
+}
+
+@code {
+    private LoginModel loginModel = new LoginModel();
+    private string message;
+
+    private async Task HandleLogin()
+    {
+
+        var client = HttpClientFactory.CreateClient("ApiClient");  // Используем созданный HttpClient
+        var response = await client.PostAsJsonAsync("auth/login", loginModel);  // Убедитесь, что путь правильный
+        // Обработка ответа
+        if (response.IsSuccessStatusCode)
+        {
+            var result = await response.Content.ReadFromJsonAsync<LoginResult>();
+            message = $"Добро пожаловать, {result.Login}!";
+            // Сохраните данные пользователя или токен, если требуется
+        }
+        else
+        {
+            message = await response.Content.ReadAsStringAsync();
+        }
+    }
+
+    public class LoginModel
+    {
+        public string Email { get; set; }
+        public string Password { get; set; }
+    }
+
+    public class LoginResult
+    {
+        public string Message { get; set; }
+        public int IdUser { get; set; }
+        public string Login { get; set; }
+    }
+}
