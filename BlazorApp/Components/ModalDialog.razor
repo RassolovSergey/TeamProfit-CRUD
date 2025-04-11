@@ -1,167 +1,98 @@
-﻿@using Microsoft.AspNetCore.Components
-@using Microsoft.AspNetCore.Components.Forms
+﻿@inject HttpClient Http
 
-<div class="modal @(show ? "show d-block" : "fade")" tabindex="-1" style="background-color: rgba(0,0,0,0.5);">
-    <div class="modal-dialog">
-        <div class="modal-content">
-            <div class="modal-header">
-                <h5 class="modal-title">@Title</h5>
-                <button type="button" class="btn-close" @onclick="Close"></button>
-            </div>
-            <div class="modal-body">
-                <EditForm Model="formModel" OnValidSubmit="HandleValidSubmit">
-                    <DataAnnotationsValidator />
-                    <ValidationSummary />
-
-                    @if (formModel.NodeType == "User")
-                    {
-                        <div class="mb-3">
-                            <label class="form-label">Username:</label>
-                            <InputText @bind-Value="formModel.Username" class="form-control" />
-                        </div>
-                        <div class="mb-3">
-                            <label class="form-label">Email:</label>
-                            <InputText @bind-Value="formModel.Email" class="form-control" />
-                        </div>
-                        <div class="mb-3">
-                            <label class="form-label">Password:</label>
-                            <InputText @bind-Value="formModel.Password" type="password" class="form-control" />
-                        </div>
-                    }
-                    else if (formModel.NodeType == "Outfit")
-                    {
-                        <div class="mb-3">
-                            <label class="form-label">Title:</label>
-                            <InputText @bind-Value="formModel.Title" class="form-control" />
-                        </div>
-                        <div class="mb-3">
-                            <label class="form-label">Description:</label>
-                            <InputText @bind-Value="formModel.Description" class="form-control" />
-                        </div>
-                        <div class="mb-3">
-                            <label class="form-label">ImageUrl:</label>
-                            <InputText @bind-Value="formModel.ImageUrl" class="form-control" />
-                        </div>
-                    }
-                    else if (formModel.NodeType == "Comment")
-                    {
-                        <div class="mb-3">
-                            <label class="form-label">Text:</label>
-                            <InputTextArea @bind-Value="formModel.Text" class="form-control" />
-                        </div>
-                    }
-
-                    <div class="d-flex justify-content-end">
-                        <button type="submit" class="btn btn-primary">@SubmitButtonText</button>
-                    </div>
-                </EditForm>
-            </div>
+@if (IsVisible)
+{
+    <div class="modal-overlay">
+        <div class="modal">
+            <h3>@(IsEdit ? "Редактировать узел" : "Создать узел")</h3>
+            <EditForm Model="editModel" OnValidSubmit="HandleValidSubmit">
+                <DataAnnotationsValidator />
+                <ValidationSummary />
+                <div class="form-group">
+                    <label>Название</label>
+                    <InputText @bind-Value="editModel.Name" class="form-control" />
+                </div>
+                <div class="form-group">
+                    <label>Тип узла</label>
+                    <InputText @bind-Value="editModel.NodeType" class="form-control" disabled="@IsEdit" />
+                </div>
+                <div class="form-group">
+                    <label>ID родителя</label>
+                    <InputNumber @bind-Value="editModel.ParentId" class="form-control" />
+                </div>
+                <button type="submit" class="btn btn-primary">Сохранить</button>
+                <button type="button" class="btn btn-secondary" @onclick="Close">Отмена</button>
+            </EditForm>
         </div>
     </div>
-</div>
+}
 
 @code {
-    private bool show;
-    public string Title { get; set; }
-    public string SubmitButtonText { get; set; }
+    // Параметр, определяющий видимость диалога
+    [Parameter] public bool IsVisible { get; set; }
+    [Parameter] public EventCallback<bool> IsVisibleChanged { get; set; }
+    // Если передана модель, значит редактирование, иначе – создание нового узла
+    [Parameter] public TreeNodeDto Model { get; set; }
+    // Callback для оповещения о сохранении (можно обновить дерево)
+    [Parameter] public EventCallback<TreeNodeDto> OnSave { get; set; }
 
-    [Parameter] public EventCallback<ModalResult> OnSave { get; set; }
+    private bool IsEdit => Model != null;
+    private TreeNodeDto editModel = new TreeNodeDto();
 
-    public ModalFormModel formModel = new ModalFormModel();
-
-    public void ShowEdit(TreeNodeDto node)
+    protected override void OnParametersSet()
     {
-        show = true;
-        Title = $"Редактировать {node.NodeType}";
-        SubmitButtonText = "Сохранить";
-
-        formModel.Id = node.Id;
-        formModel.NodeType = node.NodeType;
-        formModel.IsCreate = false;
-
-        formModel.Name = node.Name;
-
-        if (node.NodeType == "User")
+        if (IsEdit)
         {
-            formModel.Username = node.Name;
-        }
-        else if (node.NodeType == "Outfit")
-        {
-            formModel.Title = node.Name;
-        }
-        else if (node.NodeType == "Comment")
-        {
-            formModel.Text = node.Name;
-        }
-    }
-
-    public void ShowCreate(string newType, int parentId)
-    {
-        show = true;
-        Title = $"Создать {newType}";
-        SubmitButtonText = "Создать";
-
-        formModel = new ModalFormModel
-            {
-                NodeType = newType,
-                ParentId = parentId,
-                ParentType = (newType == "Outfit") ? "User" : "Outfit",
-                IsCreate = true
-            };
-    }
-
-    private async Task HandleValidSubmit()
-    {
-        if (formModel.IsCreate)
-        {
-            await CreateObject();
+            // Клонируем переданный объект, чтобы изменения не затрагивали исходный до сохранения
+            editModel = new TreeNodeDto
+                {
+                    Id = Model.Id,
+                    Name = Model.Name,
+                    NodeType = Model.NodeType,
+                    ParentId = Model.ParentId,
+                    ParentType = Model.ParentType,
+                    HasChildren = Model.HasChildren
+                };
         }
         else
         {
-            await UpdateObject();
+            editModel = new TreeNodeDto();
         }
     }
 
-    private async Task CreateObject()
+    // Обработка отправки данных формы
+    private async Task HandleValidSubmit()
     {
-        // Ваш код для создания объектов
+        if (IsEdit)
+        {
+            // Вызов API для обновления узла (используем PUT-метод; endpoint "tree/update" уже реализован)
+            var response = await Http.PutAsJsonAsync("tree/update", new
+            {
+                NodeType = editModel.NodeType,
+                NodeId = editModel.Id,
+                NewParentId = editModel.ParentId
+            });
+            if (response.IsSuccessStatusCode)
+            {
+                await OnSave.InvokeAsync(editModel);
+            }
+        }
+        else
+        {
+            // Предположим, что для создания узла реализован endpoint "tree/create"
+            var response = await Http.PostAsJsonAsync("tree/create", editModel);
+            if (response.IsSuccessStatusCode)
+            {
+                var newNode = await response.Content.ReadFromJsonAsync<TreeNodeDto>();
+                await OnSave.InvokeAsync(newNode);
+            }
+        }
+        await Close();
     }
 
-    private async Task UpdateObject()
+    private async Task Close()
     {
-        // Ваш код для обновления объектов
-    }
-
-    public void Close()
-    {
-        show = false;
-    }
-
-    public class ModalFormModel
-    {
-        public int Id { get; set; }
-        public string NodeType { get; set; }
-        public bool IsCreate { get; set; }
-
-        public string Username { get; set; }
-        public string Email { get; set; }
-        public string Password { get; set; }
-
-        public string Title { get; set; }
-        public string Description { get; set; }
-        public string ImageUrl { get; set; }
-
-        public string Text { get; set; }
-
-        public int ParentId { get; set; }
-        public string ParentType { get; set; }
-
-        public string Name { get; set; }
-    }
-
-    public class ModalResult
-    {
-        public TreeNodeDto CreatedNode { get; set; }
-        public TreeNodeDto UpdatedNode { get; set; }
+        IsVisible = false;
+        await IsVisibleChanged.InvokeAsync(IsVisible);
     }
 }

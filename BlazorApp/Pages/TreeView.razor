@@ -1,247 +1,208 @@
-﻿@page "/treeview"
-@inject HttpClient Http
+﻿@page "/tree"
 @using System.Net.Http.Json
-@using Web_Api.Controllers
-@using Web_Api.Model
-@using Web_Api.Services
-@using BlazorApp.Components
+@inject IHttpClientFactory HttpClientFactory
+@implements IDisposable
 
+<h1>Управление Узлами</h1>
 
-<h3 class="mb-3">Иерархическое дерево</h3>
+<!-- Кнопка для добавления нового узла -->
+<button class="btn btn-primary mb-3" @onclick="ShowCreateModal">Добавить узел</button>
 
-<div class="row">
-    <div class="col-4">
-        @if (treeNodes == null)
-        {
-            <div>Загрузка...</div>
-        }
-        else
-        {
-            <ul class="list-group">
-                @foreach (var node in treeNodes)
-                {
-                    <TreeNodeComponent Node="node"
-                                       OnNodeDrop="HandleNodeDrop"
-                                       OnContextMenu="ShowContextMenu"
-                                       OnExpand="HandleExpand" />
-                }
-            </ul>
-        }
-    </div>
-    <div class="col-8">
-        <div class="alert alert-info">
-            <strong>Подсказки:</strong>
-            <ul class="mb-0">
-                <li>Клик правой кнопкой по элементу дерева открывает контекстное меню.</li>
-                <li>Вы можете перемещать аутфиты к другому пользователю (Drag & Drop) или комментарии к другому аутфиту.</li>
-                <li>При редактировании/добавлении появится модальное окно.</li>
-            </ul>
-        </div>
-    </div>
-</div>
-
-@if (showContextMenu)
+<!-- Отображение дерева -->
+@if (rootNodes == null)
 {
-    <div style="position:absolute; top:@contextMenuYpx; left:@contextMenuXpx; background-color:white; border:1px solid #ccc; z-index:1000;">
-        <ul class="list-unstyled m-0 p-2">
-            <li @onclick="() => EditNode(selectedNode)" style="cursor:pointer;">✎ Редактировать</li>
-            <li @onclick="() => DeleteNode(selectedNode)" style="cursor:pointer;">🗑 Удалить</li>
-            <li @onclick="() => AddChild(selectedNode)" style="cursor:pointer;">➕ Добавить дочерний</li>
-        </ul>
+    <p>Загрузка...</p>
+}
+else if (!rootNodes.Any())
+{
+    <p>Нет узлов для отображения.</p>
+}
+else
+{
+    <ul>
+        @foreach (var node in rootNodes)
+        {
+            <!-- Передаём каждый узел в компонент с обратными вызовами:
+                 OnNodeChanged – обновляет дерево при изменениях,
+                 OnEdit – открывает модальное окно редактирования,
+                 OnDelete – удаляет узел -->
+            <TheeNodeComponent Node="node" 
+                                OnNodeChanged="ReloadTree" 
+                                OnEdit="ShowEditModal" 
+                                OnDelete="HandleDelete" />
+        }
+    </ul>
+}
+
+<!-- Модальное окно для создания/редактирования узлов -->
+@if (isModalVisible)
+{
+    <div class="modal-backdrop fade show"></div>
+    <div class="modal fade show d-block" tabindex="-1" role="dialog">
+        <div class="modal-dialog" role="document">
+            <div class="modal-content">
+                <div class="modal-header">
+                    <h5 class="modal-title">@modalTitle</h5>
+                    <button type="button" class="close" aria-label="Close" @onclick="CloseModal">
+                        <span aria-hidden="true">&times;</span>
+                    </button>
+                </div>
+                <EditForm Model="currentNode" OnValidSubmit="HandleValidSubmit">
+                    <DataAnnotationsValidator />
+                    <ValidationSummary />
+                    <div class="modal-body">
+                        <div class="form-group">
+                            <label>Название</label>
+                            <InputText class="form-control" @bind-Value="currentNode.Name" />
+                        </div>
+                        <div class="form-group">
+                            <label>Тип узла</label>
+                            <!-- При редактировании тип заблокирован, чтобы случайно его не изменить -->
+                            <InputText class="form-control" @bind-Value="currentNode.NodeType" disabled="@isEditMode" />
+                        </div>
+                        <div class="form-group">
+                            <label>ID родителя</label>
+                            <InputNumber class="form-control" @bind-Value="currentNode.ParentId" />
+                        </div>
+                        <!-- Другие поля можно добавить при необходимости -->
+                    </div>
+                    <div class="modal-footer">
+                        <button type="submit" class="btn btn-primary">Сохранить</button>
+                        <button type="button" class="btn btn-secondary" @onclick="CloseModal">Отмена</button>
+                    </div>
+                </EditForm>
+            </div>
+        </div>
     </div>
 }
 
-
 @code {
-    private List<TreeNodeDto> treeNodes;
-    private bool showContextMenu = false;
-    private double contextMenuXpx;
-    private double contextMenuYpx;
-    private TreeNodeDto selectedNode;
-    private ModalDialog modalDialog;
+    // Список корневых узлов (например, пользователей)
+    private List<TreeNodeDto> rootNodes;
+    // Флаг, позволяющий избежать вызова StateHasChanged после уничтожения компонента
+    private bool _disposed;
+
+    // Переменные для работы модального окна
+    private bool isModalVisible = false;
+    private string modalTitle = "Создание узла";
+    private bool isEditMode = false;
+    // Модель узла для создания или редактирования
+    private TreeNodeDto currentNode = new TreeNodeDto();
 
     protected override async Task OnInitializedAsync()
     {
-        await LoadRootNodes();
+        await LoadRootNodesAsync();
     }
 
-    private async Task LoadRootNodes()
+    private async Task LoadRootNodesAsync()
     {
-        treeNodes = await Http.GetFromJsonAsync<List<TreeNodeDto>>("api/tree/root");
-    }
-
-    private async Task HandleExpand(TreeNodeDto node)
-    {
-        if ((node.Children == null || node.Children.Count == 0) && node.HasChildren)
+        try
         {
-            var children = await Http.GetFromJsonAsync<List<TreeNodeDto>>($"api/tree/{node.NodeType}/{node.Id}/children");
-            node.Children = children;
+            var client = HttpClientFactory.CreateClient("ApiClient");
+            rootNodes = await client.GetFromJsonAsync<List<TreeNodeDto>>("api/Tree/root");
+        }
+        catch (Exception ex)
+        {
+            Console.Error.WriteLine($"Ошибка загрузки корневых узлов: {ex.Message}");
+            rootNodes = new List<TreeNodeDto>();
+        }
+        if (!_disposed)
+        {
             StateHasChanged();
         }
     }
 
-    private async Task HandleNodeDrop((TreeNodeDto Dragged, TreeNodeDto Target) data)
+    // Перезагрузка дерева
+    private async Task ReloadTree()
     {
-        var (draggedNode, targetNode) = data;
-        var dto = new UpdateNodeDto();
+        await LoadRootNodesAsync();
+    }
 
-        if (draggedNode.NodeType == "Outfit" && targetNode.NodeType == "User")
+    // Открытие модального окна для создания нового узла
+    private void ShowCreateModal()
+    {
+        isEditMode = false;
+        modalTitle = "Создание узла";
+        currentNode = new TreeNodeDto();
+        isModalVisible = true;
+    }
+
+    // Открытие модального окна для редактирования узла
+    private void ShowEditModal(TreeNodeDto nodeToEdit)
+    {
+        isEditMode = true;
+        modalTitle = "Редактирование узла";
+        // Клонирование узла для редактирования
+        currentNode = new TreeNodeDto
         {
-            dto.NodeType = "Outfit";
-            dto.NodeId = draggedNode.Id;
-            dto.NewParentId = targetNode.Id;
+            Id = nodeToEdit.Id,
+            Name = nodeToEdit.Name,
+            NodeType = nodeToEdit.NodeType,
+            ParentId = nodeToEdit.ParentId,
+            ParentType = nodeToEdit.ParentType,
+            HasChildren = nodeToEdit.HasChildren,
+            Children = nodeToEdit.Children
+        };
+        isModalVisible = true;
+    }
+
+    // Обработка удаления узла (вызывается из дочернего компонента TheeNodeComponent)
+    private async Task HandleDelete(TreeNodeDto nodeToDelete)
+    {
+        try
+        {
+            var client = HttpClientFactory.CreateClient("ApiClient");
+            var response = await client.DeleteAsync($"api/Tree/delete/{nodeToDelete.Id}");
+            if (!response.IsSuccessStatusCode)
+            {
+                Console.Error.WriteLine("Ошибка удаления узла");
+            }
         }
-        else if (draggedNode.NodeType == "Comment" && targetNode.NodeType == "Outfit")
+        catch (Exception ex)
         {
-            dto.NodeType = "Comment";
-            dto.NodeId = draggedNode.Id;
-            dto.NewParentId = targetNode.Id;
+            Console.Error.WriteLine($"Ошибка удаления узла: {ex.Message}");
+        }
+        await ReloadTree();
+    }
+
+    // Обработка отправки формы модального окна (для создания или обновления узла)
+    private async Task HandleValidSubmit()
+    {
+        var client = HttpClientFactory.CreateClient("ApiClient");
+        if (isEditMode)
+        {
+            // Для редактирования отправляем PUT-запрос (endpoint "api/Tree/update")
+            var dto = new { NodeType = currentNode.NodeType, NodeId = currentNode.Id, NewParentId = currentNode.ParentId };
+            var response = await client.PutAsJsonAsync("api/Tree/update", dto);
+            if (!response.IsSuccessStatusCode)
+            {
+                Console.Error.WriteLine("Ошибка обновления узла");
+            }
         }
         else
         {
-            return;
-        }
-
-        var response = await Http.PutAsJsonAsync("api/tree/update", dto);
-        if (response.IsSuccessStatusCode)
-        {
-            await RefreshNode(targetNode);
-        }
-    }
-
-    private async Task RefreshNode(TreeNodeDto node)
-    {
-        if (node.HasChildren)
-        {
-            var children = await Http.GetFromJsonAsync<List<TreeNodeDto>>($"api/tree/{node.NodeType}/{node.Id}/children");
-            node.Children = children;
-            StateHasChanged();
-        }
-    }
-
-    private void ShowContextMenu(TreeNodeDto node, MouseEventArgs e)
-    {
-        selectedNode = node;
-        contextMenuXpx = e.ClientX;
-        contextMenuYpx = e.ClientY;
-        showContextMenu = true;
-    }
-
-    private void EditNode(TreeNodeDto node)
-    {
-        showContextMenu = false;
-        modalDialog.ShowEdit(node);
-    }
-
-    private async Task DeleteNode(TreeNodeDto node)
-    {
-        showContextMenu = false;
-
-        if (node.NodeType == "User")
-        {
-            var response = await Http.DeleteAsync($"api/users/{node.Id}");
+            // Для создания отправляем POST-запрос (endpoint "api/Tree/create")
+            var response = await client.PostAsJsonAsync("api/Tree/create", currentNode);
             if (response.IsSuccessStatusCode)
             {
-                RemoveNodeFromTree(node);
+                currentNode = await response.Content.ReadFromJsonAsync<TreeNodeDto>();
             }
-        }
-        else if (node.NodeType == "Outfit")
-        {
-            var response = await Http.DeleteAsync($"api/outfits/{node.Id}");
-            if (response.IsSuccessStatusCode)
+            else
             {
-                RemoveNodeFromTree(node);
+                Console.Error.WriteLine("Ошибка создания узла");
             }
         }
-        else if (node.NodeType == "Comment")
-        {
-            var response = await Http.DeleteAsync($"api/comments/{node.Id}");
-            if (response.IsSuccessStatusCode)
-            {
-                RemoveNodeFromTree(node);
-            }
-        }
+        isModalVisible = false;
+        await ReloadTree();
     }
 
-    private void AddChild(TreeNodeDto node)
+    private void CloseModal()
     {
-        showContextMenu = false;
-        if (node.NodeType == "User")
-        {
-            modalDialog.ShowCreate("Outfit", node.Id);
-        }
-        else if (node.NodeType == "Outfit")
-        {
-            modalDialog.ShowCreate("Comment", node.Id);
-        }
+        isModalVisible = false;
     }
 
-    private void RemoveNodeFromTree(TreeNodeDto node)
+    public void Dispose()
     {
-        if (treeNodes.Contains(node))
-        {
-            treeNodes.Remove(node);
-            return;
-        }
-
-        RemoveNodeRecursively(treeNodes, node);
-        StateHasChanged();
-    }
-
-    private void RemoveNodeRecursively(List<TreeNodeDto> list, TreeNodeDto nodeToRemove)
-    {
-        foreach (var item in list)
-        {
-            if (item.Children.Contains(nodeToRemove))
-            {
-                item.Children.Remove(nodeToRemove);
-                return;
-            }
-            if (item.Children.Any())
-            {
-                RemoveNodeRecursively(item.Children, nodeToRemove);
-            }
-        }
-    }
-
-    private async Task OnModalSave(ModalResult result)
-    {
-        if (result.CreatedNode != null)
-        {
-            var parentNode = FindNode(treeNodes, result.CreatedNode.ParentId, result.CreatedNode.ParentType);
-            if (parentNode != null)
-            {
-                if (parentNode.Children == null)
-                    parentNode.Children = new List<TreeNodeDto>();
-                parentNode.Children.Add(result.CreatedNode);
-                parentNode.HasChildren = true;
-            }
-        }
-        else if (result.UpdatedNode != null)
-        {
-            var existingNode = FindNode(treeNodes, result.UpdatedNode.Id, result.UpdatedNode.NodeType);
-            if (existingNode != null)
-            {
-                existingNode.Name = result.UpdatedNode.Name;
-            }
-        }
-
-        StateHasChanged();
-    }
-
-    private TreeNodeDto FindNode(List<TreeNodeDto> list, int id, string nodeType)
-    {
-        foreach (var item in list)
-        {
-            if (item.Id == id && item.NodeType == nodeType)
-                return item;
-
-            if (item.Children != null && item.Children.Any())
-            {
-                var found = FindNode(item.Children, id, nodeType);
-                if (found != null) return found;
-            }
-        }
-        return null;
+        _disposed = true;
     }
 }

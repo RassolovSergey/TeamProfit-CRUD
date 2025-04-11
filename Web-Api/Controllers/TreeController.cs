@@ -144,5 +144,51 @@ namespace Web_Api.Controllers
             await _context.SaveChangesAsync();
             return Ok("Узел обновлён.");
         }
+
+        // POST: api/Tree/create
+        [HttpPost("create")]
+        public async Task<IActionResult> CreateNode([FromBody] TreeNodeDto nodeDto)
+        {
+            if (nodeDto == null)
+                return BadRequest("Неверные данные узла.");
+
+            // Пример: создание узла типа "User"
+            if (nodeDto.NodeType.Equals("User", StringComparison.OrdinalIgnoreCase))
+            {
+                // Создаем новую сущность пользователя. Предполагается, что модель User содержит минимум поля IdUser и Login.
+                var user = new User
+                {
+                    Login = nodeDto.Name
+                    // Можно добавить другие свойства, если они требуются (например, Email и т.д.)
+                };
+                _context.Users.Add(user);
+                await _context.SaveChangesAsync();
+
+                // Формируем возвращаемый узел на основании созданного пользователя.
+                var createdNode = new TreeNodeDto
+                {
+                    Id = user.IdUser,
+                    Name = user.Login,
+                    NodeType = "User",
+                    HasChildren = false // Новый пользователь сначала не имеет дочерних узлов
+                };
+                return Ok(createdNode);
+            }
+            else if (nodeDto.NodeType.Equals("Cost", StringComparison.OrdinalIgnoreCase))
+            {
+                // Если поддерживается создание затрат, аналогичный блок можно реализовать
+                // Пример (учтите, что для затрат могут понадобиться дополнительные поля):
+                // var cost = new Cost { Amounts = ..., TypeCosts = ..., IdUser = ..., ... };
+                // _context.Costs.Add(cost); await _context.SaveChangesAsync();
+                // var createdNode = new TreeNodeDto { Id = cost.IdCosts, Name = $"{cost.TypeCosts} - {cost.Amounts} руб.", NodeType = "Cost", HasChildren = false };
+                // return Ok(createdNode);
+                return BadRequest("Создание узлов типа 'Cost' не поддерживается в данной версии.");
+            }
+            else
+            {
+                return BadRequest("Неверный тип узла для создания.");
+            }
+        }
+
     }
 }
