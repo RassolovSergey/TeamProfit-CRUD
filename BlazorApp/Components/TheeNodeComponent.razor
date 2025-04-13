@@ -1,123 +1,90 @@
-﻿@using Plk.Blazor.DragDrop
-@inject HttpClient Http
+﻿@using Microsoft.AspNetCore.Components.Web
 
-<Draggable TItem="TreeNodeDto" ItemData="Node" Class="draggable-node">
-    <DropZone TItem="TreeNodeDto" OnDrop="HandleDrop" Class="droppable-zone">
-        <li>
-            <div class="node-container">
-                @if (Node.HasChildren)
-                {
-                    <button @onclick="ToggleChildren">
-                        @(expanded ? "−" : "+")
-                    </button>
-                }
-                <span>@Node.Name</span>
-                <button @onclick="EditNode">Редактировать</button>
-                <button @onclick="DeleteNode">Удалить</button>
-            </div>
+<li style="padding-left: 20px;">
+    <div style="display: inline-flex; align-items: center;"
+         draggable="true"
+         @ondragstart="(e) => OnDragStart(e, Node)"
+    @ondragover:preventDefault
+         @ondrop="(e) => OnDrop(e, Node)"
+    @oncontextmenu:preventDefault
+         @oncontextmenu="(e) => OnRightClick(e, Node)">
 
-            @if (expanded)
+        <!-- Кнопка раскрытия/сворачивания -->
+        @if (Node.HasChildren)
+        {
+            <button class="btn btn-sm btn-link p-0 me-2"
+                    style="font-size:0.9rem;"
+                    @onclick="ToggleExpand">
+                @(isExpanded ? "▼" : "▶")
+            </button>
+        }
+
+        <span>@Node.Name (@Node.NodeType)</span>
+    </div>
+
+    @if (isExpanded && Node.Children != null && Node.Children.Any())
+    {
+        <ul class="list-unstyled">
+            @foreach (var child in Node.Children)
             {
-                @if (children == null)
-                {
-                    <div>Загрузка...</div>
-                }
-                else
-                {
-                    <ul>
-                        @foreach (var child in children)
-                        {
-                            <!-- Рекурсивный вызов для дочерних узлов -->
-                            <TheeNodeComponent Node="child" OnNodeChanged="ChildChanged" />
-                        }
-                    </ul>
-                }
+                <TreeNodeComponent Node="child"
+                                   OnNodeDrop="OnNodeDrop"
+                                   OnContextMenu="OnContextMenu"
+                                   OnExpand="OnExpand" />
             }
-        </li>
-    </DropZone>
-</Draggable>
+        </ul>
+    }
+</li>
 
 @code {
     [Parameter] public TreeNodeDto Node { get; set; }
-    // Callback для уведомления родительского компонента об изменениях (например, после редактирования или drop)
-    [Parameter] public EventCallback OnNodeChanged { get; set; }
+    [Parameter] public EventCallback<(TreeNodeDto, TreeNodeDto)> OnNodeDrop { get; set; }
+    [Parameter] public EventCallback<(TreeNodeDto, MouseEventArgs)> OnContextMenu { get; set; }
+    [Parameter] public EventCallback<TreeNodeDto> OnExpand { get; set; }
 
-    private bool expanded = false;
-    private List<TreeNodeDto> children;
+    private TreeNodeDto draggedNode;
 
-    private async Task ToggleChildren()
+    // Локальное состояние раскрытия/сворачивания узла
+    private bool isExpanded;
+
+    // Drag & Drop: запоминаем перетаскиваемый узел
+    private void OnDragStart(DragEventArgs e, TreeNodeDto node)
     {
-        expanded = !expanded;
-        if (expanded && children == null && Node.HasChildren)
-        {
-            // Определяем endpoint в зависимости от типа узла
-            string endpoint = Node.NodeType.ToLower() switch
-            {
-                "user" => $"tree/user/{Node.Id}/children",
-                "team" => $"tree/team/{Node.Id}/children",
-                "project" => $"tree/project/{Node.Id}/children",
-                _ => null
-            };
+        draggedNode = node;
+    }
 
-            if (endpoint != null)
+    // Drag & Drop: вызываем родительский EventCallback
+    private async Task OnDrop(DragEventArgs e, TreeNodeDto targetNode)
+    {
+        if (draggedNode != null)
+        {
+            await OnNodeDrop.InvokeAsync((draggedNode, targetNode));
+        }
+    }
+
+    // Контекстное меню: вызываем родительский EventCallback
+    private async Task OnRightClick(MouseEventArgs e, TreeNodeDto node)
+    {
+        await OnContextMenu.InvokeAsync((node, e));
+    }
+
+    // Тогл: при первом разворачивании можно попросить родителя подгрузить детей
+    private async Task ToggleExpand()
+    {
+        if (!isExpanded)
+        {
+            // Разворачиваем узел
+            if (OnExpand.HasDelegate && Node.HasChildren && (Node.Children == null || Node.Children.Count == 0))
             {
-                children = await Http.GetFromJsonAsync<List<TreeNodeDto>>(endpoint);
+                // Родитель (например, TreeView) подгрузит дочерние узлы
+                await OnExpand.InvokeAsync(Node);
             }
+            isExpanded = true;
         }
-    }
-
-    private void EditNode()
-    {
-        // Здесь можно вызвать модальное окно для редактирования узла
-    }
-
-    private async Task DeleteNode()
-    {
-        // Выполните вызов API для удаления узла, затем обновите дерево
-        await OnNodeChanged.InvokeAsync(null);
-    }
-
-    /// <summary>
-    /// Обработчик события drop, полученного от компонента DropZone.
-    /// </summary>
-    /// <param name="args">Содержит данные перетаскиваемого узла.</param>
-    private async Task HandleDrop(TreeNodeDto draggedNode, DragEventArgs e)
-    {
-        // draggedNode – это объект, который перетаскивали
-        // e – стандартный DragEventArgs для дополнительной информации (если нужно)
-        if (draggedNode.NodeType.Equals("User", StringComparison.OrdinalIgnoreCase))
+        else
         {
-            var dto = new
-            {
-                NodeType = draggedNode.NodeType,
-                NodeId = draggedNode.Id,
-                NewParentId = Node.Id  // Новый родитель – это текущий узел (Node)
-            };
-
-            // Обновляем родительскую связь
-            await Http.PutAsJsonAsync("tree/update-team", dto);
-        }
-
-        // Можно добавить аналогичную логику для других типов узлов (Cost, Project и т.д.)
-        await OnNodeChanged.InvokeAsync();
-    }
-
-
-    private async Task ChildChanged()
-    {
-        string endpoint = Node.NodeType.ToLower() switch
-        {
-            "user" => $"tree/user/{Node.Id}/children",
-            "team" => $"tree/team/{Node.Id}/children",
-            "project" => $"tree/project/{Node.Id}/children",
-            _ => null
-        };
-
-        if (endpoint != null)
-        {
-            children = await Http.GetFromJsonAsync<List<TreeNodeDto>>(endpoint);
-            StateHasChanged();
-            await OnNodeChanged.InvokeAsync(null);
+            // Сворачиваем узел
+            isExpanded = false;
         }
     }
 }

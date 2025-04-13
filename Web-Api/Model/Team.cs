@@ -1,16 +1,17 @@
 ﻿using System.ComponentModel.DataAnnotations;
+using Microsoft.Extensions.Hosting;
 
 namespace Web_Api.Model
 {
     public class Team
     {
-        [Key]
         [Required]
-        public int IdTeam { get; set; }
-        [Required, MaxLength(20)]
-        public string Name { get; set; }
+        public int Id { get; set; } // ID команды
 
-        // Связь с пользователями (одна команда может содержать несколько пользователей)
-        public ICollection<User> ? Users { get; set; }  // Добавляем коллекцию пользователей
+        [Required, MaxLength(20)]
+        public string Name { get; set; } = string.Empty;    // Название команды
+
+        // Связи
+        public ICollection<User>? Users { get; set; } // В одной команде много пользователей
     }
 }

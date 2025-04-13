@@ -23,7 +23,7 @@ namespace Web_Api.Controllers
             return await _context.Costs.Include(c => c.User).ToListAsync();
         }
 
-        // GET: api/Cost/5
+        // GET: api/Cost
         [HttpGet("{id}")]
         public async Task<ActionResult<Cost>> GetCost(int id)
         {

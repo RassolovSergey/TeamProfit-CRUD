@@ -5,82 +5,35 @@ namespace Web_Api.Model
 {
     public class User
     {
-        // Уникальный идентификатор пользователя
-        [Key]
         [Required]
-        public int IdUser { get; set; }
+        public int Id { get; set; } // ID Пользователя
 
-        // Никнэйм пользователя
         [Required, MaxLength(30)]
-        public string Login { get; set; }
+        public string Login { get; set; } = string.Empty;   // Login Пользователя
 
-        // Имя пользователя
-        [MaxLength(30)]
-        public string ? Name { get; set; }
-
-        [MaxLength(30)]
-        public string ? Surname { get; set; }
-
-        // Email пользователя (обязательное поле, должен быть валидный email, максимальная длина 255 символов)
         [Required, EmailAddress, MaxLength(255)]
-        public string Email { get; set; }
+        public string Email { get; set; } = string.Empty; // Почта пользователя
 
-        // Хэш пароля
         [Required]
-        public string PasswordHash { get; set; }
+        public string PasswordHash { get; set; } = string.Empty; // Хеш пороля
 
-        // Соль для хэширования пароля
-        public string ? Salt { get; set; }
+        public string ? Salt { get; set; } = string.Empty; // Соль пороля
 
-        // Роль пользователя
-        [Required]
-        public Role Role { get; set; }
-
-        // Тип сотрудничества
-        [Required]
-        public TypeCooperation TypeCooperation { get; set; }
-
-        // Цена работы
         [Required]
         [Range(0, double.MaxValue, ErrorMessage = "Цена должна быть больше нуля!")]
-        public decimal PriceWork { get; set; } = 10;
+        public decimal PriceWork { get; set; } = 10.0m; // Цена работы
 
-        // ID Команды
-        public int ? IdTeam { get; set; }
-
-        // Логическое поле активности пользователя
         [Required]
-        public bool IsActive { get; set; } = false;
+        public bool IsActive { get; set; } = false; // Флаг Активности
 
-        // Дата регистрации
         [Required]
-        public DateTime DateRegistration { get; set; } = DateTime.UtcNow;
+        public DateTime DateRegistration { get; set; } = DateTime.UtcNow; // Дата регистрации
 
-        public Team ? Team { get; set; }  // Связь с командой (ссылка на объект Team)
+        // Связи
+        public int IdTeam { get; set; } // Serial от Team
 
-        // Связь с затратами (пользователь может иметь несколько статей расходов)
-        public ICollection<Cost> ? Costs { get; set; }  // Добавляем коллекцию затрат
-    }
+        public Team? Team { get; set; } // Ссылка на Team
 
-
-    // Типы финансового сотрудничества
-    public enum TypeCooperation
-    {
-        Сдельная,
-        Процентная
-    }
-
-    // Список ролей
-    public enum Role
-    {
-        Admim,
-        Administrator,
-        Creator,
-        Designer,
-        Artist2D,
-        Artist3D,
-        PRManager,
-        VideoEditor,
-        Worker
+        public ICollection<Cost>? Costs { get; set; }    // У одного пользователя много трат
     }
 }
