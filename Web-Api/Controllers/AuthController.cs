@@ -63,7 +63,7 @@ namespace Web_Api.Controllers
             var user = await _context.Users.FirstOrDefaultAsync(u => u.Email == loginModel.Email);
             if (user == null)
             {
-                Console.WriteLine("User not found");
+                Console.WriteLine("Пользователь не найден.");
                 return Unauthorized("Неверные данные для входа.");
             }
 
@@ -77,7 +77,7 @@ namespace Web_Api.Controllers
 
             if (hash != user.PasswordHash)
             {
-                Console.WriteLine("Hash mismatch");
+                Console.WriteLine("Хеш пороля нне соответствует.");
                 return Unauthorized("Неверные данные для входа.");
             }
 

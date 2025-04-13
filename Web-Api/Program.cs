@@ -24,7 +24,6 @@ internal class Program
         var app = builder.Build();
 
 
-
         // Настройка HTTP
         // Конфигурация пайплайна запросов
         if (app.Environment.IsDevelopment())

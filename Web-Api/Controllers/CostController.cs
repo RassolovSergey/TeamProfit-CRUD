@@ -1,7 +1,6 @@
 ﻿using Microsoft.AspNetCore.Mvc;
-using Microsoft.EntityFrameworkCore;
-using Web_Api.Data;
 using Web_Api.Model;
+using Web_Api.Repositories.Interfaces;
 
 namespace Web_Api.Controllers
 {
@@ -9,93 +8,54 @@ namespace Web_Api.Controllers
     [ApiController]
     public class CostController : ControllerBase
     {
-        private readonly TeamProfitDBContext _context;
+        private readonly ICostRepository _repository;
 
-        public CostController(TeamProfitDBContext context)
+        public CostController(ICostRepository repository)
         {
-            _context = context;
+            _repository = repository;
         }
 
-        // GET: api/Cost
         [HttpGet]
-        public async Task<ActionResult<IEnumerable<Cost>>> GetCosts()
+        public async Task<ActionResult<IEnumerable<Cost>>> GetAll()
         {
-            return await _context.Costs.Include(c => c.User).ToListAsync();
+            var costs = await _repository.GetAllAsync();
+            return Ok(costs);
         }
 
-        // GET: api/Cost
         [HttpGet("{id}")]
-        public async Task<ActionResult<Cost>> GetCost(int id)
+        public async Task<ActionResult<Cost>> Get(int id)
         {
-            var cost = await _context.Costs.Include(c => c.User).FirstOrDefaultAsync(c => c.Id == id);
-
-            if (cost == null)
-            {
-                return NotFound();
-            }
-
-            return cost;
+            var cost = await _repository.GetByIdAsync(id);
+            if (cost == null) return NotFound();
+            return Ok(cost);
         }
 
-        // POST: api/Cost
         [HttpPost]
-        public async Task<ActionResult<Cost>> PostCost(Cost cost)
+        public async Task<IActionResult> Create(Cost cost)
         {
-            _context.Costs.Add(cost);
-            await _context.SaveChangesAsync();
+            if (!ModelState.IsValid)
+                return BadRequest(ModelState);
 
-            return CreatedAtAction("GetCost", new { id = cost.Id }, cost);
+            await _repository.AddAsync(cost);
+            return CreatedAtAction(nameof(Get), new { id = cost.Id }, cost);
         }
 
-        // PUT: api/Cost/5
         [HttpPut("{id}")]
-        public async Task<IActionResult> PutCost(int id, Cost cost)
+        public async Task<IActionResult> Update(int id, Cost updatedCost)
         {
-            if (id != cost.Id)
-            {
-                return BadRequest();
-            }
+            if (id != updatedCost.Id) return BadRequest("ID mismatch");
+            if (!ModelState.IsValid) return BadRequest(ModelState);
 
-            _context.Entry(cost).State = EntityState.Modified;
-
-            try
-            {
-                await _context.SaveChangesAsync();
-            }
-            catch (DbUpdateConcurrencyException)
-            {
-                if (!CostExists(id))
-                {
-                    return NotFound();
-                }
-                else
-                {
-                    throw;
-                }
-            }
-
+            await _repository.UpdateAsync(updatedCost);
             return NoContent();
         }
 
-        // DELETE: api/Cost/5
+
         [HttpDelete("{id}")]
-        public async Task<IActionResult> DeleteCost(int id)
+        public async Task<IActionResult> Delete(int id)
         {
-            var cost = await _context.Costs.FindAsync(id);
-            if (cost == null)
-            {
-                return NotFound();
-            }
-
-            _context.Costs.Remove(cost);
-            await _context.SaveChangesAsync();
-
+            await _repository.DeleteAsync(id);
             return NoContent();
-        }
-
-        private bool CostExists(int id)
-        {
-            return _context.Costs.Any(e => e.Id== id);
         }
     }
 }

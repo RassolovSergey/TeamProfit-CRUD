@@ -1,7 +1,6 @@
 ﻿using Microsoft.AspNetCore.Mvc;
-using Microsoft.EntityFrameworkCore;
-using Web_Api.Data;
 using Web_Api.Model;
+using Web_Api.Repositories.Interfaces;
 
 namespace Web_Api.Controllers
 {
@@ -9,93 +8,54 @@ namespace Web_Api.Controllers
     [ApiController]
     public class UserController : ControllerBase
     {
-        private readonly TeamProfitDBContext _context;
+        private readonly IUserRepository _repository;
 
-        public UserController(TeamProfitDBContext context)
+        public UserController(IUserRepository repository)
         {
-            _context = context;
+            _repository = repository;
         }
 
-        // GET: api/User
         [HttpGet]
-        public async Task<ActionResult<IEnumerable<User>>> GetUsers()
+        public async Task<ActionResult<IEnumerable<User>>> GetAll()
         {
-            return await _context.Users.ToListAsync();
+            var users = await _repository.GetAllAsync();
+            return Ok(users);
         }
 
-        // GET: api/User/5
         [HttpGet("{id}")]
-        public async Task<ActionResult<User>> GetUser(int id)
+        public async Task<ActionResult<User>> Get(int id)
         {
-            var user = await _context.Users.FindAsync(id);
-
-            if (user == null)
-            {
-                return NotFound();
-            }
-
-            return user;
+            var user = await _repository.GetByIdAsync(id);
+            if (user == null) return NotFound();
+            return Ok(user);
         }
 
-        // POST: api/User
         [HttpPost]
-        public async Task<ActionResult<User>> PostUser(User user)
+        public async Task<IActionResult> Create(User user)
         {
-            _context.Users.Add(user);
-            await _context.SaveChangesAsync();
+            if (!ModelState.IsValid)
+                return BadRequest(ModelState);
 
-            return CreatedAtAction("GetUser", new { id = user.Id }, user);
+            await _repository.AddAsync(user);
+            return CreatedAtAction(nameof(Get), new { id = user.Id }, user);
         }
 
-        // PUT: api/User/5
         [HttpPut("{id}")]
-        public async Task<IActionResult> PutUser(int id, User user)
+        public async Task<IActionResult> Update(int id, User updatedUser)
         {
-            if (id != user.Id)
-            {
-                return BadRequest();
-            }
+            if (id != updatedUser.Id) return BadRequest("ID mismatch");
+            if (!ModelState.IsValid) return BadRequest(ModelState);
 
-            _context.Entry(user).State = EntityState.Modified;
-
-            try
-            {
-                await _context.SaveChangesAsync();
-            }
-            catch (DbUpdateConcurrencyException)
-            {
-                if (!UserExists(id))
-                {
-                    return NotFound();
-                }
-                else
-                {
-                    throw;
-                }
-            }
-
+            await _repository.UpdateAsync(updatedUser);
             return NoContent();
         }
 
-        // DELETE: api/User/5
+
         [HttpDelete("{id}")]
-        public async Task<IActionResult> DeleteUser(int id)
+        public async Task<IActionResult> Delete(int id)
         {
-            var user = await _context.Users.FindAsync(id);
-            if (user == null)
-            {
-                return NotFound();
-            }
-
-            _context.Users.Remove(user);
-            await _context.SaveChangesAsync();
-
+            await _repository.DeleteAsync(id);
             return NoContent();
-        }
-
-        private bool UserExists(int id)
-        {
-            return _context.Users.Any(e => e.Id== id);
         }
     }
 }

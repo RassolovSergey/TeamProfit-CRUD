@@ -1,7 +1,6 @@
 ﻿using Microsoft.AspNetCore.Mvc;
-using Microsoft.EntityFrameworkCore;
-using Web_Api.Data;
 using Web_Api.Model;
+using Web_Api.Repositories.Interfaces;
 
 namespace Web_Api.Controllers
 {
@@ -9,93 +8,55 @@ namespace Web_Api.Controllers
     [ApiController]
     public class TeamController : ControllerBase
     {
-        private readonly TeamProfitDBContext _context;
+        private readonly ITeamRepository _repository;
 
-        public TeamController(TeamProfitDBContext context)
+        public TeamController(ITeamRepository repository)
         {
-            _context = context;
+            _repository = repository;
         }
 
-        // GET: api/Team
         [HttpGet]
-        public async Task<ActionResult<IEnumerable<Team>>> GetTeams()
+        public async Task<ActionResult<IEnumerable<Team>>> GetAll()
         {
-            return await _context.Teams.ToListAsync();
+            var teams = await _repository.GetAllAsync();
+            return Ok(teams);
         }
 
-        // GET: api/Team/5
         [HttpGet("{id}")]
-        public async Task<ActionResult<Team>> GetTeam(int id)
+        public async Task<ActionResult<Team>> Get(int id)
         {
-            var team = await _context.Teams.FindAsync(id);
-
-            if (team == null)
-            {
-                return NotFound();
-            }
-
-            return team;
+            var team = await _repository.GetByIdAsync(id);
+            if (team == null) return NotFound();
+            return Ok(team);
         }
 
-        // POST: api/Team
         [HttpPost]
-        public async Task<ActionResult<Team>> PostTeam(Team team)
+        public async Task<IActionResult> Create(Team team)
         {
-            _context.Teams.Add(team);
-            await _context.SaveChangesAsync();
+            if (!ModelState.IsValid)
+                return BadRequest(ModelState); // Возвращаем ошибки валидации
 
-            return CreatedAtAction("GetTeam", new { id = team.Id }, team);
+            await _repository.AddAsync(team);
+            return CreatedAtAction(nameof(Get), new { id = team.Id }, team);
         }
 
-        // PUT: api/Team/5
+
         [HttpPut("{id}")]
-        public async Task<IActionResult> PutTeam(int id, Team team)
+        public async Task<IActionResult> Update(int id, Team updatedTeam)
         {
-            if (id != team.Id)
-            {
-                return BadRequest();
-            }
+            if (id != updatedTeam.Id) return BadRequest("ID mismatch");
+            if (!ModelState.IsValid) return BadRequest(ModelState);
 
-            _context.Entry(team).State = EntityState.Modified;
-
-            try
-            {
-                await _context.SaveChangesAsync();
-            }
-            catch (DbUpdateConcurrencyException)
-            {
-                if (!TeamExists(id))
-                {
-                    return NotFound();
-                }
-                else
-                {
-                    throw;
-                }
-            }
-
+            await _repository.UpdateAsync(updatedTeam);
             return NoContent();
         }
 
-        // DELETE: api/Team/5
+
         [HttpDelete("{id}")]
-        public async Task<IActionResult> DeleteTeam(int id)
+        public async Task<IActionResult> Delete(int id)
         {
-            var team = await _context.Teams.FindAsync(id);
-            if (team == null)
-            {
-                return NotFound();
-            }
-
-            _context.Teams.Remove(team);
-            await _context.SaveChangesAsync();
-
+            await _repository.DeleteAsync(id);
             return NoContent();
-        }
-
-        private bool TeamExists(int id)
-        {
-            return _context.Teams.Any(e => e.Id == id);
         }
     }
 }

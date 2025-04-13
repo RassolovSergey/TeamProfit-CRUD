@@ -4,7 +4,7 @@
     {
         public int Id { get; set; } // Идентификатор узла
         public string Name { get; set; } // Имя узла (например, логин пользователя или тип затрат)
-        public string NodeType { get; set; } // Тип узла (User, Cost, Team, Project)
+        public string NodeType { get; set; } // Тип узла (User, Cost, Team)
         public bool HasChildren { get; set; } // Флаг наличия дочерних узлов
         public List<TreeNodeDto> Children { get; set; } = new List<TreeNodeDto>(); // Список дочерних узлов
 
