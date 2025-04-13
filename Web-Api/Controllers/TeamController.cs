@@ -44,14 +44,14 @@ namespace Web_Api.Controllers
             _context.Teams.Add(team);
             await _context.SaveChangesAsync();
 
-            return CreatedAtAction("GetTeam", new { id = team.IdTeam }, team);
+            return CreatedAtAction("GetTeam", new { id = team.Id }, team);
         }
 
         // PUT: api/Team/5
         [HttpPut("{id}")]
         public async Task<IActionResult> PutTeam(int id, Team team)
         {
-            if (id != team.IdTeam)
+            if (id != team.Id)
             {
                 return BadRequest();
             }
@@ -95,7 +95,7 @@ namespace Web_Api.Controllers
 
         private bool TeamExists(int id)
         {
-            return _context.Teams.Any(e => e.IdTeam == id);
+            return _context.Teams.Any(e => e.Id == id);
         }
     }
 }

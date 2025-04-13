@@ -7,9 +7,6 @@ namespace Web_Api.Controllers
 {
     [ApiController]
     [Route("api/[controller]")]
-
-
-
     public class TreeController : ControllerBase
     {
         private readonly TeamProfitDBContext _context;
@@ -25,10 +22,10 @@ namespace Web_Api.Controllers
             var users = await _context.Users.Include(u => u.Team).ToListAsync(); // Загружаем пользователей с командами
             var treeNodes = users.Select(u => new TreeNodeDto
             {
-                Id = u.IdUser,
+                Id = u.Id,
                 Name = u.Login,
                 NodeType = "User",
-                HasChildren = _context.Costs.Any(c => c.IdUser == u.IdUser) // Проверяем наличие затрат
+                HasChildren = _context.Costs.Any(c => c.IdUser == u.Id) // Проверяем наличие затрат
             }).ToList();
 
             return Ok(treeNodes);
@@ -43,8 +40,8 @@ namespace Web_Api.Controllers
             var costs = await _context.Costs.Where(c => c.IdUser == id).ToListAsync();
             children = costs.Select(c => new TreeNodeDto
             {
-                Id = c.IdCosts,
-                Name = $"{c.IdCosts} - {c.Amounts} руб.",
+                Id = c.Id,
+                Name = $"{c.Id} - {c.Amounts} руб.",
                 NodeType = "Cost",
                 HasChildren = false // Затраты не имеют дочерних узлов
             }).ToList();
@@ -61,10 +58,10 @@ namespace Web_Api.Controllers
             var users = await _context.Users.Where(u => u.IdTeam == id).ToListAsync(); // Получаем пользователей для команды
             children = users.Select(u => new TreeNodeDto
             {
-                Id = u.IdUser,
+                Id = u.Id,
                 Name = u.Login,
                 NodeType = "User",
-                HasChildren = _context.Costs.Any(c => c.IdUser == u.IdUser)
+                HasChildren = _context.Costs.Any(c => c.IdUser == u.Id)
             }).ToList();
 
             return Ok(children);

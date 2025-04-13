@@ -27,7 +27,7 @@ namespace Web_Api.Controllers
         [HttpGet("{id}")]
         public async Task<ActionResult<Cost>> GetCost(int id)
         {
-            var cost = await _context.Costs.Include(c => c.User).FirstOrDefaultAsync(c => c.IdCosts == id);
+            var cost = await _context.Costs.Include(c => c.User).FirstOrDefaultAsync(c => c.Id == id);
 
             if (cost == null)
             {
@@ -44,14 +44,14 @@ namespace Web_Api.Controllers
             _context.Costs.Add(cost);
             await _context.SaveChangesAsync();
 
-            return CreatedAtAction("GetCost", new { id = cost.IdCosts }, cost);
+            return CreatedAtAction("GetCost", new { id = cost.Id }, cost);
         }
 
         // PUT: api/Cost/5
         [HttpPut("{id}")]
         public async Task<IActionResult> PutCost(int id, Cost cost)
         {
-            if (id != cost.IdCosts)
+            if (id != cost.Id)
             {
                 return BadRequest();
             }
@@ -95,7 +95,7 @@ namespace Web_Api.Controllers
 
         private bool CostExists(int id)
         {
-            return _context.Costs.Any(e => e.IdCosts == id);
+            return _context.Costs.Any(e => e.Id== id);
         }
     }
 }

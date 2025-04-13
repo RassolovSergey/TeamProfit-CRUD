@@ -41,8 +41,6 @@ namespace Web_Api.Controllers
                 Email = registerModel.Email,
                 PasswordHash = hash,
                 Salt = salt,
-                // Role = Role.Worker,
-                // TypeCooperation = TypeCooperation.Сдельная,
                 PriceWork = 10,
                 IsActive = true,
                 DateRegistration = DateTime.UtcNow,
@@ -84,7 +82,7 @@ namespace Web_Api.Controllers
             }
 
             // Здесь можно сгенерировать JWT-токен
-            return Ok(new { Message = "Вход выполнен успешно", UserId = user.IdUser, UserLogin = user.Login });
+            return Ok(new { Message = "Вход выполнен успешно", UserId = user.Id, UserLogin = user.Login });
         }
     }
 }

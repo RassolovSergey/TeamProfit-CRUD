@@ -44,14 +44,14 @@ namespace Web_Api.Controllers
             _context.Users.Add(user);
             await _context.SaveChangesAsync();
 
-            return CreatedAtAction("GetUser", new { id = user.IdUser }, user);
+            return CreatedAtAction("GetUser", new { id = user.Id }, user);
         }
 
         // PUT: api/User/5
         [HttpPut("{id}")]
         public async Task<IActionResult> PutUser(int id, User user)
         {
-            if (id != user.IdUser)
+            if (id != user.Id)
             {
                 return BadRequest();
             }
@@ -95,7 +95,7 @@ namespace Web_Api.Controllers
 
         private bool UserExists(int id)
         {
-            return _context.Users.Any(e => e.IdUser == id);
+            return _context.Users.Any(e => e.Id== id);
         }
     }
 }

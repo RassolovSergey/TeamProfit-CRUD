@@ -30,7 +30,7 @@ namespace Web_Api.Model
         public DateTime DateRegistration { get; set; } = DateTime.UtcNow; // Дата регистрации
 
         // Связи
-        public int? IdTeam { get; set; } // Serial от Team
+        public int IdTeam { get; set; } // Serial от Team
 
         public Team? Team { get; set; } // Ссылка на Team
 
