@@ -19,20 +19,30 @@ namespace Web_Api.Controllers
             _context = context;
         }
 
-        // Регистрация нового пользователя
         [HttpPost("register")]
         public async Task<ActionResult<User>> Register([FromBody] RegisterModel registerModel)
         {
             if (!ModelState.IsValid)
                 return BadRequest(ModelState);
-            if (await _context.Users.AnyAsync(u => u.Email == registerModel.Email))
-            {
-                return BadRequest("Пользователь с таким email уже существует.");
-            }
-            if (registerModel.Password.Length < 6)
-                return BadRequest("Пароль слишком простой.");
 
-            var salt = PasswordHelper.GenerateSalt();  // Используем метод из PasswordHelper
+            if (await _context.Users.AnyAsync(u => u.Email == registerModel.Email))
+                return BadRequest("Пользователь с таким email уже существует.");
+
+            if (registerModel.Password.Length < 6)
+                return BadRequest("Пароль слишком простой. Минимум 6 символов.");
+
+            // 🔐 Проверка на сложность пароля
+            var passwordErrors = PasswordStrengthService.GetWeaknesses(registerModel.Password);
+            if (passwordErrors.Any())
+            {
+                return BadRequest(new
+                {
+                    Message = "Пароль недостаточно надёжен.",
+                    Errors = passwordErrors
+                });
+            }
+
+            var salt = PasswordHelper.GenerateSalt();
             var hash = PasswordHelper.ComputeHash(registerModel.Password, salt);
 
             var user = new User
@@ -44,7 +54,7 @@ namespace Web_Api.Controllers
                 PriceWork = 10,
                 IsActive = true,
                 DateRegistration = DateTime.UtcNow,
-                IdTeam = null
+                IdTeam = 0
             };
 
             _context.Users.Add(user);
@@ -52,6 +62,7 @@ namespace Web_Api.Controllers
 
             return Ok("Регистрация прошла успешно.");
         }
+
 
         // Авторизация пользователя
         [HttpPost("login")]

@@ -15,6 +15,7 @@ namespace Web_Api.Controllers
             _repository = repository;
         }
 
+        // GetAll
         [HttpGet]
         public async Task<ActionResult<IEnumerable<Team>>> GetAll()
         {
@@ -22,6 +23,7 @@ namespace Web_Api.Controllers
             return Ok(teams);
         }
 
+        // Get {id}
         [HttpGet("{id}")]
         public async Task<ActionResult<Team>> Get(int id)
         {
@@ -30,6 +32,7 @@ namespace Web_Api.Controllers
             return Ok(team);
         }
 
+        // Create
         [HttpPost]
         public async Task<IActionResult> Create(Team team)
         {
@@ -40,7 +43,7 @@ namespace Web_Api.Controllers
             return CreatedAtAction(nameof(Get), new { id = team.Id }, team);
         }
 
-
+        // Update {Id, newTeam}
         [HttpPut("{id}")]
         public async Task<IActionResult> Update(int id, Team updatedTeam)
         {
@@ -51,7 +54,7 @@ namespace Web_Api.Controllers
             return NoContent();
         }
 
-
+        // Delete {Id}
         [HttpDelete("{id}")]
         public async Task<IActionResult> Delete(int id)
         {

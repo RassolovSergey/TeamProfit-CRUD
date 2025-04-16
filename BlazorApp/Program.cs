@@ -2,13 +2,14 @@ using Microsoft.AspNetCore.Components;
 using Microsoft.AspNetCore.Components.Web;
 using BlazorApp.Pages;
 using Plk.Blazor.DragDrop;
+using BlazorApp.Services;
 
 var builder = WebApplication.CreateBuilder(args);
 
 builder.Services.AddHttpClient();
 builder.Services.AddBlazorDragDrop();
 
-
+builder.Services.AddScoped<TreeService>();
 builder.Services.AddRazorPages();
 builder.Services.AddServerSideBlazor();
 

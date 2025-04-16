@@ -15,13 +15,14 @@ namespace Web_Api.Controllers
             _repository = repository;
         }
 
+        // GetAll
         [HttpGet]
         public async Task<ActionResult<IEnumerable<User>>> GetAll()
         {
             var users = await _repository.GetAllAsync();
             return Ok(users);
         }
-
+        // Get {Id}
         [HttpGet("{id}")]
         public async Task<ActionResult<User>> Get(int id)
         {
@@ -29,7 +30,7 @@ namespace Web_Api.Controllers
             if (user == null) return NotFound();
             return Ok(user);
         }
-
+        // Create {newUser}
         [HttpPost]
         public async Task<IActionResult> Create(User user)
         {
@@ -39,7 +40,7 @@ namespace Web_Api.Controllers
             await _repository.AddAsync(user);
             return CreatedAtAction(nameof(Get), new { id = user.Id }, user);
         }
-
+        // Update {id, newUser}
         [HttpPut("{id}")]
         public async Task<IActionResult> Update(int id, User updatedUser)
         {
@@ -50,7 +51,7 @@ namespace Web_Api.Controllers
             return NoContent();
         }
 
-
+        // Delete {id}
         [HttpDelete("{id}")]
         public async Task<IActionResult> Delete(int id)
         {

@@ -1,208 +1,35 @@
 ﻿@page "/tree"
-@using System.Net.Http.Json
-@inject IHttpClientFactory HttpClientFactory
-@implements IDisposable
+@inject TreeService TreeService					// 
+@using System.Net.Http.Headers					<!--  Для удобной работы с JSON через HttpClient -->
+@using Microsoft.AspNetCore.Components.Web		<!--  Для работы с событиями мыши -->
+@using BlazorApp.Components						<!-- Подключаем папку Components -->
+@using static BlazorApp.Components.ModalDialog	<!--  Для работы с результатом модального окна -->
+@using BlazorApp.Model							<!--  Подключаем папку Model -->
 
-<h1>Управление Узлами</h1>
-
-<!-- Кнопка для добавления нового узла -->
-<button class="btn btn-primary mb-3" @onclick="ShowCreateModal">Добавить узел</button>
-
-<!-- Отображение дерева -->
-@if (rootNodes == null)
-{
-    <p>Загрузка...</p>
-}
-else if (!rootNodes.Any())
-{
-    <p>Нет узлов для отображения.</p>
-}
-else
-{
-    <ul>
-        @foreach (var node in rootNodes)
-        {
-            <!-- Передаём каждый узел в компонент с обратными вызовами:
-                 OnNodeChanged – обновляет дерево при изменениях,
-                 OnEdit – открывает модальное окно редактирования,
-                 OnDelete – удаляет узел -->
-            <TheeNodeComponent Node="node" 
-                                OnNodeChanged="ReloadTree" 
-                                OnEdit="ShowEditModal" 
-                                OnDelete="HandleDelete" />
+<!-- Заголовок Страницы-->
+<html>
+<!-- <head> - Представляет набор методанных документа -->
+<head>
+    <meta charset="UTF-8"> <!-- Устанавливаем кодировку страницы как UTF-8 (поддержка кириллицы и других символов) -->
+    <title>Иерархическое дерево</title> <!-- Название страницы, отображается во вкладке браузера -->
+    <!-- Стли -->
+    <style>
+        /* Стили для заголовка страницы */
+        .page-title {
+            text-align: center;     /* Выравниваем текст по центру */
+            font-size: 24px;        /* Устанавливаем размер шрифта — 24 пикселя */
+            margin-top: 20px;       /* Отступ сверху — 20 пикселей */
         }
-    </ul>
-}
+    </style>
+</head>
+<!-- Первый блок - Заголовок->
+<Heading>
+    <!-- Заголовок страницы с применением CSS-класса page-title -->
+    <h1 class="page-title">Иерархическое дерево</h1>
+</Heading>
 
-<!-- Модальное окно для создания/редактирования узлов -->
-@if (isModalVisible)
-{
-    <div class="modal-backdrop fade show"></div>
-    <div class="modal fade show d-block" tabindex="-1" role="dialog">
-        <div class="modal-dialog" role="document">
-            <div class="modal-content">
-                <div class="modal-header">
-                    <h5 class="modal-title">@modalTitle</h5>
-                    <button type="button" class="close" aria-label="Close" @onclick="CloseModal">
-                        <span aria-hidden="true">&times;</span>
-                    </button>
-                </div>
-                <EditForm Model="currentNode" OnValidSubmit="HandleValidSubmit">
-                    <DataAnnotationsValidator />
-                    <ValidationSummary />
-                    <div class="modal-body">
-                        <div class="form-group">
-                            <label>Название</label>
-                            <InputText class="form-control" @bind-Value="currentNode.Name" />
-                        </div>
-                        <div class="form-group">
-                            <label>Тип узла</label>
-                            <!-- При редактировании тип заблокирован, чтобы случайно его не изменить -->
-                            <InputText class="form-control" @bind-Value="currentNode.NodeType" disabled="@isEditMode" />
-                        </div>
-                        <div class="form-group">
-                            <label>ID родителя</label>
-                            <InputNumber class="form-control" @bind-Value="currentNode.ParentId" />
-                        </div>
-                        <!-- Другие поля можно добавить при необходимости -->
-                    </div>
-                    <div class="modal-footer">
-                        <button type="submit" class="btn btn-primary">Сохранить</button>
-                        <button type="button" class="btn btn-secondary" @onclick="CloseModal">Отмена</button>
-                    </div>
-                </EditForm>
-            </div>
-        </div>
-    </div>
-}
+</html>
 
 @code {
-    // Список корневых узлов (например, пользователей)
-    private List<TreeNodeDto> rootNodes;
-    // Флаг, позволяющий избежать вызова StateHasChanged после уничтожения компонента
-    private bool _disposed;
 
-    // Переменные для работы модального окна
-    private bool isModalVisible = false;
-    private string modalTitle = "Создание узла";
-    private bool isEditMode = false;
-    // Модель узла для создания или редактирования
-    private TreeNodeDto currentNode = new TreeNodeDto();
-
-    protected override async Task OnInitializedAsync()
-    {
-        await LoadRootNodesAsync();
-    }
-
-    private async Task LoadRootNodesAsync()
-    {
-        try
-        {
-            var client = HttpClientFactory.CreateClient("ApiClient");
-            rootNodes = await client.GetFromJsonAsync<List<TreeNodeDto>>("api/Tree/root");
-        }
-        catch (Exception ex)
-        {
-            Console.Error.WriteLine($"Ошибка загрузки корневых узлов: {ex.Message}");
-            rootNodes = new List<TreeNodeDto>();
-        }
-        if (!_disposed)
-        {
-            StateHasChanged();
-        }
-    }
-
-    // Перезагрузка дерева
-    private async Task ReloadTree()
-    {
-        await LoadRootNodesAsync();
-    }
-
-    // Открытие модального окна для создания нового узла
-    private void ShowCreateModal()
-    {
-        isEditMode = false;
-        modalTitle = "Создание узла";
-        currentNode = new TreeNodeDto();
-        isModalVisible = true;
-    }
-
-    // Открытие модального окна для редактирования узла
-    private void ShowEditModal(TreeNodeDto nodeToEdit)
-    {
-        isEditMode = true;
-        modalTitle = "Редактирование узла";
-        // Клонирование узла для редактирования
-        currentNode = new TreeNodeDto
-        {
-            Id = nodeToEdit.Id,
-            Name = nodeToEdit.Name,
-            NodeType = nodeToEdit.NodeType,
-            ParentId = nodeToEdit.ParentId,
-            ParentType = nodeToEdit.ParentType,
-            HasChildren = nodeToEdit.HasChildren,
-            Children = nodeToEdit.Children
-        };
-        isModalVisible = true;
-    }
-
-    // Обработка удаления узла (вызывается из дочернего компонента TheeNodeComponent)
-    private async Task HandleDelete(TreeNodeDto nodeToDelete)
-    {
-        try
-        {
-            var client = HttpClientFactory.CreateClient("ApiClient");
-            var response = await client.DeleteAsync($"api/Tree/delete/{nodeToDelete.Id}");
-            if (!response.IsSuccessStatusCode)
-            {
-                Console.Error.WriteLine("Ошибка удаления узла");
-            }
-        }
-        catch (Exception ex)
-        {
-            Console.Error.WriteLine($"Ошибка удаления узла: {ex.Message}");
-        }
-        await ReloadTree();
-    }
-
-    // Обработка отправки формы модального окна (для создания или обновления узла)
-    private async Task HandleValidSubmit()
-    {
-        var client = HttpClientFactory.CreateClient("ApiClient");
-        if (isEditMode)
-        {
-            // Для редактирования отправляем PUT-запрос (endpoint "api/Tree/update")
-            var dto = new { NodeType = currentNode.NodeType, NodeId = currentNode.Id, NewParentId = currentNode.ParentId };
-            var response = await client.PutAsJsonAsync("api/Tree/update", dto);
-            if (!response.IsSuccessStatusCode)
-            {
-                Console.Error.WriteLine("Ошибка обновления узла");
-            }
-        }
-        else
-        {
-            // Для создания отправляем POST-запрос (endpoint "api/Tree/create")
-            var response = await client.PostAsJsonAsync("api/Tree/create", currentNode);
-            if (response.IsSuccessStatusCode)
-            {
-                currentNode = await response.Content.ReadFromJsonAsync<TreeNodeDto>();
-            }
-            else
-            {
-                Console.Error.WriteLine("Ошибка создания узла");
-            }
-        }
-        isModalVisible = false;
-        await ReloadTree();
-    }
-
-    private void CloseModal()
-    {
-        isModalVisible = false;
-    }
-
-    public void Dispose()
-    {
-        _disposed = true;
-    }
 }

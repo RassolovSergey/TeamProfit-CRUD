@@ -1,30 +1,38 @@
-﻿namespace BlazorApp.Model
+﻿using Microsoft.VisualBasic;
+
+namespace BlazorApp.Model
 {
     public class TreeNodeDto
     {
-        public int Id { get; set; } // Идентификатор узла
-        public string Name { get; set; } // Имя узла (например, логин пользователя или тип затрат)
-        public string NodeType { get; set; } // Тип узла (User, Cost, Team, Project)
-        public bool HasChildren { get; set; } // Флаг наличия дочерних узлов
-        public List<TreeNodeDto> Children { get; set; } = new List<TreeNodeDto>(); // Список дочерних узлов
-
-        // Новые свойства для связи с родителем
-        public int ParentId { get; set; } // Идентификатор родительского узла
-        public string ParentType { get; set; } // Тип родителя (например, "Team" или "Project")
+        public int Id { get; set; }
+        public string Name { get; set; } = string.Empty;
+        public string NodeType { get; set; } = string.Empty;
+        public int? ParentId { get; set; }
+        public string? ParentType { get; set; }
+        public bool HasChildren { get; set; }
+        public List<TreeNodeDto> Children { get; set; } = new();
     }
 
-    public class UpdateNodeDto
+    // Скрываем: ХешПороля и его Соль
+    public class UserDTO
     {
-        public string NodeType { get; set; } // Тип узла (например, "Cost")
-        public int NodeId { get; set; } // Идентификатор узла, который обновляется
-        public int NewParentId { get; set; } // Идентификатор нового родителя (например, проект для затрат)
+        public int Id { get; set; }
+        public required string Login { get; set; } = string.Empty;
+        public string Email { get; set; } = string.Empty;
+        public decimal PriceWork { get; set; } = 10.0m;
+        public int IdTeam { get; set; } = 0;
+        public bool IsActive { get; set; } = true;
+        public DateAndTime DateRegistration { get; set; }
     }
-
-    public class UserDto
+    public class TeamDTO
     {
-        public int UserId { get; set; }  // Идентификатор пользователя
-        public string Username { get; set; }  // Логин пользователя
-        public string Email { get; set; }  // Электронная почта пользователя
+        public int Id { get; set; } = 0;
+        public string Name { get; set; } = string.Empty;
     }
-
+    public class CostDTO
+    {
+        public int Id { get; set; }
+        public int IdUser { get; set; }
+        public decimal? Amounts { get; set; } = 10.0m;
+    }
 }

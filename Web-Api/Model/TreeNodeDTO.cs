@@ -13,10 +13,23 @@
         public string ParentType { get; set; } // Тип родителя (например, "Team" или "Project")
     }
 
+
     public class UpdateNodeDto
     {
-        public string NodeType { get; set; } // Тип узла (например, "Cost")
-        public int NodeId { get; set; } // Идентификатор узла, который обновляется
-        public int NewParentId { get; set; } // Идентификатор нового родителя (например, проект для затрат)
+        public string NodeType { get; set; } = null!;
+        public int Id { get; set; }
+
+        public string? Name { get; set; }       // для команды и пользователя
+        public decimal? Amount { get; set; }    // для затрат
+    }
+
+    public class CreateNodeDto
+    {
+        public string NodeType { get; set; } = null!; // "Team", "User", "Cost"
+        public int? ParentId { get; set; }            // родитель: Team.Id или User.Id
+        public string? Name { get; set; }             // имя команды или логин
+        public decimal? Amount { get; set; }          // для затрат
+        public string? Email { get; set; }            // для пользователя
+        public string? Password { get; set; }         // для пользователя
     }
 }

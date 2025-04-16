@@ -1,5 +1,7 @@
 using Microsoft.EntityFrameworkCore;
 using Web_Api.Data;
+using Web_Api.Repositories.Interfaces;
+using Web_Api.Repositories;
 
 internal class Program
 {
@@ -20,6 +22,11 @@ internal class Program
         // Настройка Swager
         builder.Services.AddEndpointsApiExplorer();
         builder.Services.AddSwaggerGen();
+
+        builder.Services.AddScoped<IUserRepository, UserRepository>();
+        builder.Services.AddScoped<ITeamRepository, TeamRepository>();
+        builder.Services.AddScoped<ICostRepository, CostRepository>();
+
 
         var app = builder.Build();
 

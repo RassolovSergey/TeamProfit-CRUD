@@ -15,6 +15,7 @@ namespace Web_Api.Controllers
             _repository = repository;
         }
 
+        // GetAll
         [HttpGet]
         public async Task<ActionResult<IEnumerable<Cost>>> GetAll()
         {
@@ -22,6 +23,7 @@ namespace Web_Api.Controllers
             return Ok(costs);
         }
 
+        // Get {Id}
         [HttpGet("{id}")]
         public async Task<ActionResult<Cost>> Get(int id)
         {
@@ -30,6 +32,7 @@ namespace Web_Api.Controllers
             return Ok(cost);
         }
 
+        // Create {newCost}
         [HttpPost]
         public async Task<IActionResult> Create(Cost cost)
         {
@@ -40,6 +43,7 @@ namespace Web_Api.Controllers
             return CreatedAtAction(nameof(Get), new { id = cost.Id }, cost);
         }
 
+        // Update {Id, newCost}
         [HttpPut("{id}")]
         public async Task<IActionResult> Update(int id, Cost updatedCost)
         {
@@ -50,7 +54,7 @@ namespace Web_Api.Controllers
             return NoContent();
         }
 
-
+        // Delete {Id}
         [HttpDelete("{id}")]
         public async Task<IActionResult> Delete(int id)
         {
