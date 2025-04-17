@@ -1,0 +1,73 @@
+﻿@using BlazorApp.Model
+@inject HttpClient Http
+
+<div class="context-menu"
+     style="position:absolute; top:@Ypx; left:@Xpx; z-index:1000;"
+     @onmouseleave="() => OnHide.InvokeAsync()">
+    <ul class="list-unstyled mb-0 bg-white border">
+        <li>
+            <button class="dropdown-item"
+                    @onclick="() => OnEdit.InvokeAsync(Node)">
+                Редактировать
+            </button>
+        </li>
+        <li>
+            <button class="dropdown-item text-success"
+                    @onclick="() => OnAdd.InvokeAsync(Node)">
+                Добавить…
+            </button>
+        </li>
+        <li>
+            <button class="dropdown-item text-danger"
+                    @onclick="DeleteNode">
+                Удалить
+            </button>
+        </li>
+    </ul>
+</div>
+
+@code {
+    [Parameter] public TreeNodeDto Node { get; set; } = default!;
+    [Parameter] public int Xpx { get; set; }
+    [Parameter] public int Ypx { get; set; }
+
+    /// <summary>
+    /// Скрыть контекстное меню
+    /// </summary>
+    [Parameter] public EventCallback OnHide { get; set; }
+
+    /// <summary>
+    /// Перезагрузить дерево после операций
+    /// </summary>
+    [Parameter] public EventCallback OnRefresh { get; set; }
+
+    /// <summary>
+    /// Запрос на редактирование узла (TreeView подпишется и откроет EditDialog)
+    /// </summary>
+    [Parameter] public EventCallback<TreeNodeDto> OnEdit { get; set; }
+
+    /// <summary>
+    /// Запрос на добавление дочернего узла (TreeView подпишется и откроет AddDialog)
+    /// </summary>
+    [Parameter] public EventCallback<TreeNodeDto> OnAdd { get; set; }
+
+    private async Task DeleteNode()
+    {
+        // Скрываем меню
+        await OnHide.InvokeAsync();
+
+        // Выполняем DELETE запроса к API
+        var response = await Http.DeleteAsync($"Tree/{Node.NodeType}/{Node.Id}");
+        if (response.IsSuccessStatusCode)
+        {
+            // Если успешно — обновляем дерево
+            await OnRefresh.InvokeAsync();
+        }
+        else
+        {
+            // Иначе — пробрасываем ошибку (можно заменить на показ тоста)
+            var error = await response.Content.ReadAsStringAsync();
+            throw new InvalidOperationException(error);
+        }
+    }
+}

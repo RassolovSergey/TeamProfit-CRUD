@@ -1,0 +1,150 @@
+﻿@using System.ComponentModel.DataAnnotations
+@using BlazorApp.Model
+@using System.Net.Http.Json
+@inject HttpClient Http
+
+@if (isVisible)
+{
+    <div class="modal fade show" style="display:block;" tabindex="-1">
+        <div class="modal-dialog">
+            <div class="modal-content">
+                <div class="modal-header">
+                    <h5 class="modal-title">
+                        Добавить @(currentMode == AddMode.User ? "пользователя" : "трату")
+                    </h5>
+                    <button type="button" class="btn-close" aria-label="Закрыть" @onclick="Hide"></button>
+                </div>
+                <div class="modal-body">
+                    <EditForm Model="FormModel" OnValidSubmit="HandleValidSubmit">
+                        <DataAnnotationsValidator />
+                        <ValidationSummary />
+
+                        @if (currentMode == AddMode.User)
+                        {
+                            <div class="mb-3">
+                                <label class="form-label">Login</label>
+                                <InputText @bind-Value="userModel.Name" class="form-control" />
+                            </div>
+                            <div class="mb-3">
+                                <label class="form-label">Email</label>
+                                <InputText @bind-Value="userModel.Email" class="form-control" />
+                            </div>
+                            <div class="mb-3">
+                                <label class="form-label">Пароль</label>
+                                <InputText @bind-Value="userModel.Password" type="password" class="form-control" />
+                            </div>
+                        }
+                        else if (currentMode == AddMode.Cost)
+                        {
+                            <div class="mb-3">
+                                <label class="form-label">Сумма</label>
+                                <InputNumber @bind-Value="costModel.Amount" class="form-control" />
+                            </div>
+                        }
+
+                        <div class="d-flex justify-content-end">
+                            <button type="button" class="btn btn-secondary me-2" @onclick="Hide">Отмена</button>
+                            <button type="submit" class="btn btn-primary">Добавить</button>
+                        </div>
+                    </EditForm>
+                </div>
+            </div>
+        </div>
+    </div>
+    <div class="modal-backdrop fade show"></div>
+}
+
+@code {
+    private bool isVisible;
+    private TreeNodeDto? parentNode;
+
+    // режим добавления: пользователь или трату
+    private enum AddMode { User, Cost }
+    private AddMode currentMode;
+
+    // модели для формы
+    private CreateUserModel userModel = new();
+    private CreateCostModel costModel = new();
+
+    // возвращаем нужную модель в зависимости от режима
+    private object FormModel => currentMode == AddMode.User ? (object)userModel : costModel;
+
+    [Parameter] public EventCallback OnAdded { get; set; }
+
+    // Вызывается из TreeView при выборе «Добавить...» в контекстном меню
+    public void Show(TreeNodeDto node)
+    {
+        parentNode = node;
+
+        if (node.NodeType == "User")
+        {
+            currentMode = AddMode.Cost;
+            costModel = new CreateCostModel();
+        }
+        else
+        {
+            currentMode = AddMode.User;
+            userModel = new CreateUserModel();
+        }
+
+        isVisible = true;
+    }
+
+    private void Hide()
+      => isVisible = false;
+
+    private async Task HandleValidSubmit()
+    {
+        // подготавливаем DTO для сервера
+        var dto = new CreateNodeDto
+            {
+                NodeType = currentMode == AddMode.User ? "User" : "Cost",
+                ParentId = currentMode == AddMode.User
+                           ? (parentNode!.NodeType == "VirtualTeam" ? 0 : parentNode!.Id)
+                           : parentNode!.Id,
+                Name = currentMode == AddMode.User ? userModel.Name : null,
+                Email = currentMode == AddMode.User ? userModel.Email : null,
+                Password = currentMode == AddMode.User ? userModel.Password : null,
+                Amount = currentMode == AddMode.Cost ? costModel.Amount : null
+            };
+
+        // POST /api/Tree
+        var response = await Http.PostAsJsonAsync("Tree", dto);
+        response.EnsureSuccessStatusCode();
+
+        Hide();
+        await OnAdded.InvokeAsync();
+    }
+
+    // Вспомогательные классы для валидации
+    private class CreateUserModel
+    {
+        [Required(ErrorMessage = "Login обязателен")]
+        public string? Name { get; set; }
+
+        [Required(ErrorMessage = "Email обязателен")]
+        [EmailAddress(ErrorMessage = "Неверный формат Email")]
+        public string? Email { get; set; }
+
+        [Required(ErrorMessage = "Пароль обязателен")]
+        public string? Password { get; set; }
+    }
+
+    private class CreateCostModel
+    {
+        [Required(ErrorMessage = "Сумма обязательна")]
+        [Range(0.01, double.MaxValue, ErrorMessage = "Сумма должна быть больше нуля")]
+        public decimal? Amount { get; set; }
+    }
+
+    // DTO для отправки на сервер
+    private class CreateNodeDto
+    {
+        public string NodeType { get; set; } = default!;
+        public int? ParentId { get; set; }
+        public string? Name { get; set; }
+        public decimal? Amount { get; set; }
+        public string? Email { get; set; }
+        public string? Password { get; set; }
+    }
+}

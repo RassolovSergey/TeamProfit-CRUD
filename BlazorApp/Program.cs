@@ -29,9 +29,7 @@ builder.Services.AddHttpClient("ApiClient", client =>
 });
 
 // Перенаправим все `@inject HttpClient` на наш именованный клиент
-builder.Services.AddScoped(sp =>
-sp.GetRequiredService<IHttpClientFactory>()
-      .CreateClient("ApiClient")
+builder.Services.AddScoped(sp => sp.GetRequiredService<IHttpClientFactory>().CreateClient("ApiClient")
 );
 
 

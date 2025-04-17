@@ -1,13 +1,23 @@
 ﻿@page "/tree"
 @using BlazorApp.Model
-@using BlazorApp.Pages
 @using BlazorApp.Components
-@using System.Net.Http.Json
 @using Microsoft.AspNetCore.Components.Web
-
+@using System.Net.Http.Json
 @inject HttpClient Http
 
-<h1 style="text-align: center; font-size: 24px;">Иерархическое Дерево</h1>
+<h1 style="text-align:center;font-size:24px;">Иерархическое Дерево</h1>
+
+@if (MenuNode != null)
+{
+    <NodeContextMenu Node="MenuNode"
+                     OnHide="() => MenuNode = null"
+                     OnRefresh="RefreshTree"
+                     OnEdit="ShowEditDialog"
+                     OnAdd="ShowAddDialog" />
+}
+
+<EditDialog @ref="editDialog" OnSaved="RefreshTree" />
+<AddDialog @ref="addDialog" OnAdded="RefreshTree" />
 
 @if (TreeNodes == null)
 {
@@ -31,25 +41,51 @@ else
     </ul>
 }
 
-
 @code {
     private List<TreeNodeDto>? TreeNodes;
+    private TreeNodeDto? MenuNode;
+    private EditDialog? editDialog;
+    private AddDialog? addDialog;
 
     protected override async Task OnInitializedAsync()
-    {
-        TreeNodes = await Http.GetFromJsonAsync<List<TreeNodeDto>>("Tree/root");
-    }
+      => await RefreshTree();
+
+    private async Task RefreshTree()
+      => TreeNodes = await Http.GetFromJsonAsync<List<TreeNodeDto>>("Tree/root");
 
     private async Task ExpandNode(TreeNodeDto node)
     {
-        var children = await Http.GetFromJsonAsync<List<TreeNodeDto>>(
+        var kids = await Http.GetFromJsonAsync<List<TreeNodeDto>>(
             $"Tree/{node.NodeType}/{node.Id}/children");
-        node.Children = children;
+        node.Children = kids;
     }
 
     private Task ShowContextMenu((TreeNodeDto node, MouseEventArgs e) args)
-        => Task.CompletedTask;
+    {
+        MenuNode = args.node;
+        return Task.CompletedTask;
+    }
 
-    private Task HandleNodeDrop((TreeNodeDto dragged, TreeNodeDto target) args)
-        => Task.CompletedTask;
+    private Task HandleNodeDrop((TreeNodeDto d, TreeNodeDto t) args)
+      => Task.CompletedTask;
+
+    // Вызывается NodeContextMenu → OnEdit
+    private async Task ShowEditDialog(TreeNodeDto node)
+    {
+        await InvokeAsync(() =>
+        {
+            editDialog?.Show(node);
+            MenuNode = null;
+        });
+    }
+
+    // Вызывается NodeContextMenu → OnAdd
+    private async Task ShowAddDialog(TreeNodeDto node)
+    {
+        await InvokeAsync(() =>
+        {
+            addDialog?.Show(node);
+            MenuNode = null;
+        });
+    }
 }
