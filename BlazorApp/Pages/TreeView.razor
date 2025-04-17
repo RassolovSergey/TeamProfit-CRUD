@@ -1,35 +1,55 @@
 ﻿@page "/tree"
-@inject TreeService TreeService					// 
-@using System.Net.Http.Headers					<!--  Для удобной работы с JSON через HttpClient -->
-@using Microsoft.AspNetCore.Components.Web		<!--  Для работы с событиями мыши -->
-@using BlazorApp.Components						<!-- Подключаем папку Components -->
-@using static BlazorApp.Components.ModalDialog	<!--  Для работы с результатом модального окна -->
-@using BlazorApp.Model							<!--  Подключаем папку Model -->
+@using BlazorApp.Model
+@using BlazorApp.Pages
+@using BlazorApp.Components
+@using System.Net.Http.Json
+@using Microsoft.AspNetCore.Components.Web
 
-<!-- Заголовок Страницы-->
-<html>
-<!-- <head> - Представляет набор методанных документа -->
-<head>
-    <meta charset="UTF-8"> <!-- Устанавливаем кодировку страницы как UTF-8 (поддержка кириллицы и других символов) -->
-    <title>Иерархическое дерево</title> <!-- Название страницы, отображается во вкладке браузера -->
-    <!-- Стли -->
-    <style>
-        /* Стили для заголовка страницы */
-        .page-title {
-            text-align: center;     /* Выравниваем текст по центру */
-            font-size: 24px;        /* Устанавливаем размер шрифта — 24 пикселя */
-            margin-top: 20px;       /* Отступ сверху — 20 пикселей */
+@inject HttpClient Http
+
+<h1 style="text-align: center; font-size: 24px;">Иерархическое Дерево</h1>
+
+@if (TreeNodes == null)
+{
+    <p>Загрузка...</p>
+}
+else if (!TreeNodes.Any())
+{
+    <p>Данные отсутствуют</p>
+}
+else
+{
+    <ul class="list-unstyled">
+        @foreach (var node in TreeNodes)
+        {
+            <TreeNodeComponent Node="node"
+                               Level="0"
+                               OnExpand="ExpandNode"
+                               OnContextMenu="ShowContextMenu"
+                               OnNodeDrop="HandleNodeDrop" />
         }
-    </style>
-</head>
-<!-- Первый блок - Заголовок->
-<Heading>
-    <!-- Заголовок страницы с применением CSS-класса page-title -->
-    <h1 class="page-title">Иерархическое дерево</h1>
-</Heading>
+    </ul>
+}
 
-</html>
 
 @code {
+    private List<TreeNodeDto>? TreeNodes;
 
+    protected override async Task OnInitializedAsync()
+    {
+        TreeNodes = await Http.GetFromJsonAsync<List<TreeNodeDto>>("Tree/root");
+    }
+
+    private async Task ExpandNode(TreeNodeDto node)
+    {
+        var children = await Http.GetFromJsonAsync<List<TreeNodeDto>>(
+            $"Tree/{node.NodeType}/{node.Id}/children");
+        node.Children = children;
+    }
+
+    private Task ShowContextMenu((TreeNodeDto node, MouseEventArgs e) args)
+        => Task.CompletedTask;
+
+    private Task HandleNodeDrop((TreeNodeDto dragged, TreeNodeDto target) args)
+        => Task.CompletedTask;
 }

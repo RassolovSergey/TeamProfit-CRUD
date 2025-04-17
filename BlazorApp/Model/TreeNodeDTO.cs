@@ -12,7 +12,14 @@ namespace BlazorApp.Model
         public bool HasChildren { get; set; }
         public List<TreeNodeDto> Children { get; set; } = new();
     }
+    public class UpdateNodeDto
+    {
+        public string NodeType { get; set; } = null!;
+        public int Id { get; set; }
 
+        public string? Name { get; set; }       // для команды и пользователя
+        public decimal? Amount { get; set; }    // для затрат
+    }
     // Скрываем: ХешПороля и его Соль
     public class UserDTO
     {

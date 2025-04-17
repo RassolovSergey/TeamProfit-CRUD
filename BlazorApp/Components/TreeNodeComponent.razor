@@ -1,0 +1,111 @@
+﻿@using Microsoft.AspNetCore.Components.Web
+
+<li draggable="true"
+    style="padding-left:@(Level * 20)px; list-style:none;"
+    @ondragstart="(e) => OnDragStart(e, Node)"
+    @ondrop="(e) => OnDrop(e, Node)"
+    @ondragover:preventDefault
+    @oncontextmenu="(e) => OnContextMenu.InvokeAsync((Node, e))">
+
+    <div style="display:flex; align-items:center;">
+        @if (Node.HasChildren)
+        {
+            <button class="btn btn-sm btn-link p-0 me-2"
+                    style="font-size:0.9rem;"
+                    @onclick="ToggleExpand">
+                @(isExpanded ? "▼" : "▶")
+            </button>
+        }
+        <span>@Node.Name (@Node.NodeType)</span>
+    </div>
+
+    @if (isExpanded)
+    {
+        <ul class="list-unstyled" style="padding-left:16px;">
+            <li><em>Id:</em> @Node.Id</li>
+            <li><em>Name:</em> @Node.Name</li>
+
+            @if (Node.HasChildren)
+            {
+                <li>
+                    <div style="display:flex; align-items:center;">
+                        <button class="btn btn-sm btn-link p-0 me-2"
+                                style="font-size:0.9rem;"
+                                @onclick="ToggleChildren">
+                            @(isChildrenExpanded ? "▼" : "▶")
+                        </button>
+                        <span>
+                            @(Node.NodeType == "Team" ? "Users" : "Costs")
+                        </span>
+                    </div>
+
+                    @if (isChildrenExpanded)
+                    {
+                        @if (Node.Children?.Any() == true)
+                        {
+                            @foreach (var child in Node.Children)
+                            {
+                                <TreeNodeComponent Node="child"
+                                                   Level="Level + 1"
+                                                   OnExpand="OnExpand"
+                                                   OnContextMenu="OnContextMenu"
+                                                   OnNodeDrop="OnNodeDrop" />
+                            }
+                        }
+                        else
+                        {
+                            <div style="padding-left:1.5rem;"><em>
+                                @(Node.NodeType == "Team"
+                                    ? "Отсутствуют пользователи"
+                                    : "У пользователя отсутствуют траты")
+                            </em></div>
+                        }
+                    }
+                </li>
+            }
+        </ul>
+    }
+</li>
+
+@code {
+    [Parameter] public TreeNodeDto Node { get; set; } = default!;
+    [Parameter] public int Level { get; set; }
+    [Parameter] public EventCallback<TreeNodeDto> OnExpand { get; set; }
+    [Parameter] public EventCallback<(TreeNodeDto, TreeNodeDto)> OnNodeDrop { get; set; }
+    [Parameter] public EventCallback<(TreeNodeDto, MouseEventArgs)> OnContextMenu { get; set; }
+
+    private bool isExpanded;
+    private bool isChildrenExpanded;
+    private TreeNodeDto? draggedNode;
+
+    private async Task ToggleExpand()
+    {
+        if (!isExpanded)
+        {
+            if (OnExpand.HasDelegate
+                && Node.HasChildren
+                && (Node.Children == null || Node.Children.Count == 0))
+            {
+                await OnExpand.InvokeAsync(Node);
+            }
+            isExpanded = true;
+            isChildrenExpanded = false;
+        }
+        else
+        {
+            isExpanded = false;
+            isChildrenExpanded = false;
+        }
+    }
+
+    private void ToggleChildren() => isChildrenExpanded = !isChildrenExpanded;
+
+    private void OnDragStart(DragEventArgs e, TreeNodeDto node)
+        => draggedNode = node;
+
+    private async Task OnDrop(DragEventArgs e, TreeNodeDto target)
+    {
+        if (draggedNode != null)
+            await OnNodeDrop.InvokeAsync((draggedNode, target));
+    }
+}

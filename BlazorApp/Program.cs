@@ -1,38 +1,43 @@
-using Microsoft.AspNetCore.Components;
+п»їusing Microsoft.AspNetCore.Components;
 using Microsoft.AspNetCore.Components.Web;
 using BlazorApp.Pages;
 using Plk.Blazor.DragDrop;
-using BlazorApp.Services;
 
 var builder = WebApplication.CreateBuilder(args);
 
 builder.Services.AddHttpClient();
 builder.Services.AddBlazorDragDrop();
 
-builder.Services.AddScoped<TreeService>();
 builder.Services.AddRazorPages();
 builder.Services.AddServerSideBlazor();
 
-// Добавляем CORS политику
+// Р”РѕР±Р°РІР»СЏРµРј CORS РїРѕР»РёС‚РёРєСѓ
 builder.Services.AddCors(options =>
 {
     options.AddPolicy("AllowAll", policy =>
     {
-        policy.AllowAnyOrigin()  // Разрешить любой источник
-              .AllowAnyMethod()  // Разрешить любые методы (GET, POST, и т.д.)
-              .AllowAnyHeader(); // Разрешить любые заголовки
+        policy.AllowAnyOrigin()  // Р Р°Р·СЂРµС€РёС‚СЊ Р»СЋР±РѕР№ РёСЃС‚РѕС‡РЅРёРє
+              .AllowAnyMethod()  // Р Р°Р·СЂРµС€РёС‚СЊ Р»СЋР±С‹Рµ РјРµС‚РѕРґС‹ (GET, POST, Рё С‚.Рґ.)
+              .AllowAnyHeader(); // Р Р°Р·СЂРµС€РёС‚СЊ Р»СЋР±С‹Рµ Р·Р°РіРѕР»РѕРІРєРё
     });
 });
 
-// Подключение BlazorServer к WebApi
+// РџРѕРґРєР»СЋС‡РµРЅРёРµ BlazorServer Рє WebApi
 builder.Services.AddHttpClient("ApiClient", client =>
 {
-    client.BaseAddress = new Uri("http://localhost:5091/api/");    // Указание базового адреса для запросов
+    client.BaseAddress = new Uri("http://localhost:5091/api/");    // РЈРєР°Р·Р°РЅРёРµ Р±Р°Р·РѕРІРѕРіРѕ Р°РґСЂРµСЃР° РґР»СЏ Р·Р°РїСЂРѕСЃРѕРІ
 });
+
+// РџРµСЂРµРЅР°РїСЂР°РІРёРј РІСЃРµ `@inject HttpClient` РЅР° РЅР°С€ РёРјРµРЅРѕРІР°РЅРЅС‹Р№ РєР»РёРµРЅС‚
+builder.Services.AddScoped(sp =>
+sp.GetRequiredService<IHttpClientFactory>()
+      .CreateClient("ApiClient")
+);
+
 
 var app = builder.Build();
 
-// Включаем CORS
+// Р’РєР»СЋС‡Р°РµРј CORS
 app.UseCors("AllowAll");
 
 if (!app.Environment.IsDevelopment())
@@ -41,11 +46,11 @@ if (!app.Environment.IsDevelopment())
 }
 
 
-// app.UseHttpsRedirection();
-
-
 app.UseStaticFiles();
 app.UseRouting();
+
+
+app.MapControllers();                          // в†ђ РњСЌРїРёРј РєРѕРЅС‚СЂРѕР»Р»РµСЂС‹ РЅР° /api/*
 app.MapBlazorHub();
 app.MapFallbackToPage("/_Host");
 
