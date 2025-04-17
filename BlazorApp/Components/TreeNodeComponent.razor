@@ -1,70 +1,100 @@
 ﻿@using Microsoft.AspNetCore.Components.Web
+@using BlazorApp.Model
 
 <li draggable="true"
-    style="padding-left:@(Level * 20)px; list-style:none;"
     @ondragstart="(e) => OnDragStart(e, Node)"
     @ondrop="(e) => OnDrop(e, Node)"
-    @ondragover:preventDefault
-    @oncontextmenu="(e) => OnContextMenu.InvokeAsync((Node, e))">
+@ondragover:preventDefault
+    @oncontextmenu="(e) => OnContextMenu.InvokeAsync((Node, e))"
+    style="list-style:none; padding-left:@(Level * 20)px;">
 
+    <!-- Заголовок узла -->
     <div style="display:flex; align-items:center;">
-        @if (Node.HasChildren)
-        {
-            <button class="btn btn-sm btn-link p-0 me-2"
-                    style="font-size:0.9rem;"
-                    @onclick="ToggleExpand">
-                @(isExpanded ? "▼" : "▶")
-            </button>
-        }
-        <span>@Node.Name (@Node.NodeType)</span>
+        <span style="cursor:pointer;" @onclick="ToggleExpand">
+            @(isExpanded ? "(-)" : "(+)")
+        </span>
+        <span style="margin-left:0.5rem; font-weight:bold;">@Node.Name</span>
     </div>
 
     @if (isExpanded)
     {
-        <ul class="list-unstyled" style="padding-left:16px;">
-            <li><em>Id:</em> @Node.Id</li>
-            <li><em>Name:</em> @Node.Name</li>
+        <ul class="list-unstyled" style="padding-left:1rem; margin-top:0.25rem;">
 
-            @if (Node.HasChildren)
+            <!-- Общие поля -->
+            <li><em>Id:</em> @Node.Id</li>
+            @if (Node.NodeType == "Cost")
+            {
+                <li><em>Сумма:</em> @Node.Name</li>
+            }
+            else
+            {
+                <li><em>Name:</em> @Node.Name</li>
+            }
+
+            <!-- Группа Users для Team/VirtualTeam -->
+            @if (Node.NodeType == "Team" || Node.NodeType == "VirtualTeam")
             {
                 <li>
-                    <div style="display:flex; align-items:center;">
-                        <button class="btn btn-sm btn-link p-0 me-2"
-                                style="font-size:0.9rem;"
-                                @onclick="ToggleChildren">
-                            @(isChildrenExpanded ? "▼" : "▶")
-                        </button>
-                        <span>
-                            @(Node.NodeType == "Team" ? "Users" : "Costs")
-                        </span>
-                    </div>
-
-                    @if (isChildrenExpanded)
+                    @if (Node.Children?.Any() == true)
                     {
-                        @if (Node.Children?.Any() == true)
-                        {
-                            @foreach (var child in Node.Children)
-                            {
-                                <TreeNodeComponent Node="child"
-                                                   Level="Level + 1"
-                                                   OnExpand="OnExpand"
-                                                   OnContextMenu="OnContextMenu"
-                                                   OnNodeDrop="OnNodeDrop" />
-                            }
-                        }
-                        else
-                        {
-                            <div style="padding-left:1.5rem;"><em>
-                                @(Node.NodeType == "Team"
-                                    ? "Отсутствуют пользователи"
-                                    : "У пользователя отсутствуют траты")
-                            </em></div>
-                        }
+                        <span style="cursor:pointer;" @onclick="ToggleChildren">
+                            @(isChildrenExpanded ? "(-)" : "(+)") Users
+                        </span>
+                    }
+                    else
+                    {
+                        <span>Users: Отсутствуют</span>
                     }
                 </li>
             }
+
+            <!-- Группа Costs для User -->
+            @if (Node.NodeType == "User")
+            {
+                <li>
+                    @if (Node.Children?.Any() == true)
+                    {
+                        <span style="cursor:pointer;" @onclick="ToggleChildren">
+                            @(isChildrenExpanded ? "(-)" : "(+)") Costs
+                        </span>
+                    }
+                    else
+                    {
+                        <span>Costs: Отсутствуют</span>
+                    }
+                </li>
+            }
+
+            <!-- Поддерево при раскрытии группы -->
+            @if (isChildrenExpanded)
+            {
+                @if (Node.Children != null && Node.Children.Any())
+                {
+                    @foreach (var child in Node.Children)
+                    {
+                        <TreeNodeComponent Node="child"
+                                           Level="Level + 1"
+                                           OnExpand="OnExpand"
+                                           OnContextMenu="OnContextMenu"
+                                           OnNodeDrop="OnNodeDrop" />
+                    }
+                }
+                else
+                {
+                    <!-- Сообщение об отсутствии потомков -->
+                    <li>
+                        <em>
+                            @(Node.NodeType == "Team" || Node.NodeType == "VirtualTeam"
+                                ? "Отсутствуют пользователи"
+                                : "У пользователя отсутствуют траты")
+                        </em>
+                    </li>
+                }
+            }
+
         </ul>
     }
+
 </li>
 
 @code {
@@ -82,12 +112,8 @@
     {
         if (!isExpanded)
         {
-            if (OnExpand.HasDelegate
-                && Node.HasChildren
-                && (Node.Children == null || Node.Children.Count == 0))
-            {
+            if (OnExpand.HasDelegate && Node.HasChildren)
                 await OnExpand.InvokeAsync(Node);
-            }
             isExpanded = true;
             isChildrenExpanded = false;
         }
@@ -100,8 +126,7 @@
 
     private void ToggleChildren() => isChildrenExpanded = !isChildrenExpanded;
 
-    private void OnDragStart(DragEventArgs e, TreeNodeDto node)
-        => draggedNode = node;
+    private void OnDragStart(DragEventArgs e, TreeNodeDto n) => draggedNode = n;
 
     private async Task OnDrop(DragEventArgs e, TreeNodeDto target)
     {
